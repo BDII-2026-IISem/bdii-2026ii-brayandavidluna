@@ -1,20 +1,26 @@
-# Evidencias de MySQL
+# Evidencias de Implementación: MySQL (Motor 1)
+**Proyecto:** Proyecto 04 - ClimaTec  
+**Asignatura:** Base de Datos II  
+**Estudiante:** Brayan David Arévalo Luna  
 
-Cada captura se conserva con su nombre original. La columna **Razon** explica que paso demuestra.
+---
 
-| Captura|                                              | Razon de la evidencia |
-|---|---|
-| [132107](<Captura de pantalla 2026-08-21 132107.png>) | Inicio de la preparacion del entorno WSL/Docker. |
-| [132221](<Captura de pantalla 2026-08-21 132221.png>) | Continuacion de la creacion de carpetas y servicios. |
-| [132430](<Captura de pantalla 2026-08-21 132430.png>) | Verificacion de la estructura de trabajo. |
-| [134146](<Captura de pantalla 2026-08-21 134146.png>) | Creacion o consulta de la red Docker compartida. |
-| [134256](<Captura de pantalla 2026-08-21 134256.png>) | Preparacion del servicio MySQL. |
-| [135539](<Captura de pantalla 2026-08-21 135539.png>) | Configuracion del archivo `.env` de MySQL. |
-| [135756](<Captura de pantalla 2026-08-21 135756.png>) | Configuracion del archivo `docker-compose.yml`. |
-| [140813](<Captura de pantalla 2026-08-21 140813.png>) | Publicacion del puerto y configuracion para acceso remoto. |
-| [142750](<Captura de pantalla 2026-08-21 142750.png>) | Arranque o comprobacion del contenedor MySQL. |
-| [143730](<Captura de pantalla 2026-08-21 143730.png>) | Prueba de conexion de MySQL en DBeaver. |
-| [143815](<Captura de pantalla 2026-08-21 143815.png>) | Confirmacion de la conexion creada en DBeaver. |
-| [144233](<Captura de pantalla 2026-08-21 144233.png>) | Descarga o seleccion del controlador JDBC de MySQL. |
-| [144353](<Captura de pantalla 2026-08-21 144353.png>) | Datos de conexion: host, puerto `3306` y usuario `root`. |
-| [145634](<Captura de pantalla 2026-08-21 145634.png>) | Creacion de usuario y asignacion de permisos; se observa la correccion ejecutada dentro del monitor MySQL. |
+## 1. Implementación DDL (Estructura de Base de Datos)
+Se ejecutó el script DDL para crear la base de datos `bd_clima_tec`, definiendo sus 16 tablas:
+- **Modelo RBAC:** `users`, `roles`, `role_users`, `resources`, `resource_roles`, `refresh_tokens`.
+- **Dominio ClimaTec:** `cliente`, `equipo`, `tecnico`, `orden_servicio`, `diagnostico`, `repuesto`, `consumo_repuesto`, `cotizacion`, `pago`, `garantia`.
+
+![Estructura DDL y Tablas](01_ddl_tablas.png)
+
+---
+
+## 2. Inserción Manual de Datos por Interfaz Gráfica (GUI)
+Se realizó la prueba de inserción manual desde la cuadrícula gráfica de DBeaver sobre la entidad `cliente`:
+
+1. **Borrador de Inserción (Pendiente por Commit):** Se diligenciaron los datos del nuevo cliente en la grilla antes de aplicar los cambios en la base de datos (resaltado en verde).
+
+![Inserción Pendiente GUI](02_gui_insercion.png)
+
+2. **Confirmación de Cambios (Commit Guardado):** Se aplicó el botón `Confirmar` (`Ctrl + S`) para persistir de manera definitiva el nuevo registro en MySQL.
+
+![Inserción Confirmada GUI](03_gui_insercion.png)
