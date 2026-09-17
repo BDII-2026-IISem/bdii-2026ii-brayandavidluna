@@ -1,0 +1,251 @@
+-- Base de datos para Proyecto 04: ClimaTec (Oracle Database 21c XE)
+
+-- ==========================================
+-- 1. SUBSISTEMA RBAC
+-- ==========================================
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE users (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       username VARCHAR2(100) NOT NULL UNIQUE,
+       email VARCHAR2(150) NOT NULL UNIQUE,
+       password VARCHAR2(255) NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       avatar VARCHAR2(255) NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE roles (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       name VARCHAR2(50) NOT NULL UNIQUE,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE role_users (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       role_id NUMBER NOT NULL,
+       user_id NUMBER NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       CONSTRAINT fk_ru_role FOREIGN KEY (role_id) REFERENCES roles(id),
+       CONSTRAINT fk_ru_user FOREIGN KEY (user_id) REFERENCES users(id),
+       CONSTRAINT uq_role_user UNIQUE (role_id, user_id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE resources (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       path VARCHAR2(255) NOT NULL,
+       method VARCHAR2(10) NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       CONSTRAINT uq_path_method UNIQUE (path, method)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE resource_roles (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       resource_id NUMBER NOT NULL,
+       role_id NUMBER NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       CONSTRAINT fk_rr_resource FOREIGN KEY (resource_id) REFERENCES resources(id),
+       CONSTRAINT fk_rr_role FOREIGN KEY (role_id) REFERENCES roles(id),
+       CONSTRAINT uq_resource_role UNIQUE (resource_id, role_id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE refresh_tokens (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       user_id NUMBER NOT NULL,
+       token VARCHAR2(255) NOT NULL,
+       device_info VARCHAR2(255) NOT NULL,
+       is_valid VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_valid IN (''ACTIVE'', ''INACTIVE'')),
+       expires_at TIMESTAMP NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       CONSTRAINT fk_rt_user FOREIGN KEY (user_id) REFERENCES users(id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+-- ==========================================
+-- 2. DOMINIO CLIMATECT
+-- ==========================================
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE cliente (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       tipo_documento VARCHAR2(20) NOT NULL,
+       numero_documento VARCHAR2(30) NOT NULL UNIQUE,
+       nombre VARCHAR2(150) NOT NULL,
+       telefono VARCHAR2(30) NOT NULL,
+       email VARCHAR2(150) NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE equipo (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       cliente_id NUMBER NOT NULL,
+       nombre VARCHAR2(100) NOT NULL,
+       descripcion CLOB NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       CONSTRAINT fk_equipo_cliente FOREIGN KEY (cliente_id) REFERENCES cliente(id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE tecnico (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       nombre VARCHAR2(150) NOT NULL,
+       descripcion VARCHAR2(255) NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE orden_servicio (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       cliente_id NUMBER NOT NULL,
+       equipo_id NUMBER NOT NULL,
+       tecnico_id NUMBER NOT NULL,
+       numero VARCHAR2(50) NOT NULL UNIQUE,
+       fecha_apertura TIMESTAMP NOT NULL,
+       fecha_cierre TIMESTAMP NULL,
+       total NUMBER(12,2) DEFAULT 0.00,
+       estado VARCHAR2(30) DEFAULT ''ABIERTA'' CHECK (estado IN (''ABIERTA'', ''DIAGNOSTICO'', ''COTIZADA'', ''APROBADA'', ''REPARACION'', ''CERRADA'', ''CANCELADA'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       CONSTRAINT fk_os_cliente FOREIGN KEY (cliente_id) REFERENCES cliente(id),
+       CONSTRAINT fk_os_equipo FOREIGN KEY (equipo_id) REFERENCES equipo(id),
+       CONSTRAINT fk_os_tecnico FOREIGN KEY (tecnico_id) REFERENCES tecnico(id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE diagnostico (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       orden_servicio_id NUMBER NOT NULL,
+       nombre VARCHAR2(150) NOT NULL,
+       descripcion CLOB NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       CONSTRAINT fk_diag_os FOREIGN KEY (orden_servicio_id) REFERENCES orden_servicio(id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE repuesto (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       nombre VARCHAR2(150) NOT NULL,
+       descripcion CLOB NULL,
+       precio NUMBER(10,2) NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE consumo_repuesto (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       orden_servicio_id NUMBER NOT NULL,
+       repuesto_id NUMBER NOT NULL,
+       cantidad NUMBER NOT NULL,
+       precio_unitario NUMBER(10,2) NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       CONSTRAINT fk_cr_os FOREIGN KEY (orden_servicio_id) REFERENCES orden_servicio(id),
+       CONSTRAINT fk_cr_repuesto FOREIGN KEY (repuesto_id) REFERENCES repuesto(id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE cotizacion (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       orden_servicio_id NUMBER NOT NULL,
+       nombre VARCHAR2(150) NOT NULL,
+       descripcion CLOB NULL,
+       monto_total NUMBER(12,2) NOT NULL,
+       estado VARCHAR2(30) DEFAULT ''PENDIENTE'' CHECK (estado IN (''PENDIENTE'', ''APROBADA'', ''RECHAZADA'')),
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       CONSTRAINT fk_cot_os FOREIGN KEY (orden_servicio_id) REFERENCES orden_servicio(id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE pago (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       referencia_tipo VARCHAR2(50) NOT NULL,
+       referencia_id NUMBER NOT NULL,
+       metodo VARCHAR2(50) NOT NULL,
+       monto NUMBER(12,2) NOT NULL,
+       fecha TIMESTAMP NOT NULL,
+       estado VARCHAR2(30) DEFAULT ''COMPLETADO'' CHECK (estado IN (''COMPLETADO'', ''PENDIENTE'', ''ANULADO'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'CREATE TABLE garantia (
+       id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       orden_servicio_id NUMBER NOT NULL UNIQUE,
+       nombre VARCHAR2(150) NOT NULL,
+       descripcion CLOB NULL,
+       fecha_inicio DATE NOT NULL,
+       fecha_fin DATE NOT NULL,
+       is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       CONSTRAINT fk_gar_os FOREIGN KEY (orden_servicio_id) REFERENCES orden_servicio(id)
+   )';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
+END;
+/
