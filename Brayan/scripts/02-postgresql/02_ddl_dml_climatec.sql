@@ -186,12 +186,79 @@ CREATE TABLE IF NOT EXISTS garantia (
     CONSTRAINT fk_gar_os FOREIGN KEY (orden_servicio_id) REFERENCES orden_servicio(id)
 );
 
--- INSERCIONES DML DE PRUEBA
-INSERT INTO cliente (tipo_documento, numero_documento, nombre, telefono, email) 
-VALUES ('CC', '1065234890', 'Hotel Guajira Real', '3009876543', 'mantenimiento@guajirareal.com');
+-- INSERCIÓN DE DATOS DE PRUEBA (DML) - PROYECTO CLIMATECT (POSTGRESQL)
 
-INSERT INTO equipo (cliente_id, nombre, descripcion) 
-VALUES (1, 'Aire Acondicionado Central 36000 BTU', 'Ubicado en el salon de eventos principal');
+-- 1. Clientes
+INSERT INTO cliente (tipo_documento, numero_documento, nombre, telefono, email) VALUES
+('CC', '1065001001', 'Hotel Guajira Real', '3001112233', 'contacto@guajirareal.com'),
+('NIT', '900123456-1', 'Centro Comercial Viva', '3102223344', 'mantenimiento@viva.com'),
+('CC', '1065001002', 'Restaurante El Mar', '3203334455', 'admin@elmar.com'),
+('CC', '1065001003', 'Clinica del Norte', '3014445566', 'biomedica@clinicanorte.com'),
+('NIT', '800987654-3', 'Supermercado Metro', '3155556677', 'servicios@metro.com');
 
-INSERT INTO tecnico (nombre, descripcion) 
-VALUES ('Brayan Luna', 'Tecnico certificado en sistemas de refrigeracion');
+-- 2. Técnicos
+INSERT INTO tecnico (nombre, descripcion) VALUES
+('Brayan Arévalo', 'Técnico Especialista en Refrigeración Industrial'),
+('Carlos Mendoza', 'Técnico de Campo - Climatización Comercial'),
+('Andrés Villamizar', 'Especialista en Diagnóstico Eléctrico'),
+('Diana Marcela Gómez', 'Supervisora de Mantenimiento Preventivo');
+
+-- 3. Repuestos
+INSERT INTO repuesto (nombre, descripcion, precio) VALUES
+('Compresor Scroll 5HP', 'Compresor hermético R410A', 1250000.00),
+('Capacitor de Marcha 45uF', 'Capacitor para motor monofásico', 45000.00),
+('Gas Refrigerante R410A (Cilindro 11.3kg)', 'Refrigerante ecológico', 380000.00),
+('Filtro Secador 3/8 Soldable', 'Filtro deshidratador líquido', 65000.00),
+('Válvula de Expansión Termostática', 'Control de flujo de refrigerante', 210000.00),
+('Motor Ventilador Condensador 1/3HP', 'Motor de alta eficiencia', 320000.00);
+
+-- 4. Equipos (Asociados a los IDs de clientes existentes)
+INSERT INTO equipo (cliente_id, nombre, descripcion) VALUES
+(3, 'Aire Central Chiller 50TR', 'Ubicado en terraza del Hotel Guajira Real'),
+(3, 'Split 24000 BTU - Recepcion', 'Área de atención al cliente'),
+(4, 'Torre de Enfriamiento B1', 'Sistema de agua helada comercial'),
+(5, 'Cámara Frigorífica Carnes', 'Temperatura de conservación -5°C'),
+(6, 'Aire Precisión Quirófano 1', 'Control estricto de humedad y temperatura'),
+(7, 'Cortina de Aire Entrada', 'Protección térmica en acceso principal');
+
+-- 5. Órdenes de Servicio
+INSERT INTO orden_servicio (cliente_id, equipo_id, tecnico_id, numero, fecha_apertura, total, estado) VALUES
+(3, 9, 2, 'OS-2026-001', '2026-08-01 08:30:00', 1630000.00, 'CERRADA'),
+(3, 10, 3, 'OS-2026-002', '2026-08-05 10:00:00', 445000.00, 'CERRADA'),
+(4, 11, 2, 'OS-2026-003', '2026-08-10 14:15:00', 1250000.00, 'REPARACION'),
+(5, 12, 4, 'OS-2026-004', '2026-08-15 09:00:00', 210000.00, 'DIAGNOSTICO'),
+(6, 13, 3, 'OS-2026-005', '2026-08-20 11:30:00', 0.00, 'ABIERTA');
+
+-- 6. Consumo de Repuestos
+INSERT INTO consumo_repuesto (orden_servicio_id, repuesto_id, cantidad, precio_unitario) VALUES
+(6, 1, 1, 1250000.00),
+(6, 3, 1, 380000.00),
+(7, 3, 1, 380000.00),
+(7, 4, 1, 65000.00),
+(8, 1, 1, 1250000.00);
+
+-- 7. Diagnósticos
+INSERT INTO diagnostico (orden_servicio_id, nombre, descripcion) VALUES
+(6, 'Fuga de Gas Refrigerante y Compresor Quemado', 'Pérdida de presión en tubería principal y falla eléctrica'),
+(7, 'Obstrucción en Filtro Secador', 'Filtro deshidratador tapado por impurezas en la línea'),
+(8, 'Desgaste en Rodamientos de Ventilador', 'Ruido excesivo por falta de lubricación'),
+(9, 'Falla en Tarjeta de Control', 'Sensor de temperatura descalibrado arrojando error'),
+(10, 'Revisión General de Rutina', 'Inspección de presiones y limpieza de serpentín');
+
+-- 8. Cotizaciones
+INSERT INTO cotizacion (orden_servicio_id, nombre, descripcion, monto_total, estado) VALUES
+(6, 'Cotización Reparación Chiller', 'Cambio de compresor 5HP y recarga de gas R410A', 1630000.00, 'APROBADA'),
+(7, 'Cotización Mantenimiento Correctivo B1', 'Reemplazo de filtro secador y recarga parcial', 445000.00, 'APROBADA'),
+(8, 'Cotización Cambio Compresor Cámara', 'Reemplazo de unidad hermética para refrigeración', 1250000.00, 'PENDIENTE'),
+(9, 'Cotización Diagnóstico Electrónico', 'Reparación de tarjeta principal de control', 210000.00, 'RECHAZADA');
+
+-- 9. Pagos
+INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
+('ORDEN_SERVICIO', 6, 'TRANSFERENCIA', 1630000.00, '2026-08-02 10:15:00', 'COMPLETADO'),
+('ORDEN_SERVICIO', 7, 'EFECTIVO', 445000.00, '2026-08-06 16:30:00', 'COMPLETADO'),
+('COTIZACION', 1, 'TARJETA_CREDITO', 500000.00, '2026-08-01 11:00:00', 'COMPLETADO');
+
+-- 10. Garantías
+INSERT INTO garantia (orden_servicio_id, nombre, descripcion, fecha_inicio, fecha_fin) VALUES
+(6, 'Garantía Mantenimiento Chiller 6 Meses', 'Cubre fallas de instalación y repuestos reemplazados', '2026-08-02', '2027-02-02'),
+(7, 'Garantía Mantenimiento Preventivo 3 Meses', 'Garantía estándar sobre limpieza y filtro', '2026-08-06', '2026-11-06');
