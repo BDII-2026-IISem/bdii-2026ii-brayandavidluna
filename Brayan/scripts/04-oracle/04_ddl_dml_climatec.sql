@@ -249,3 +249,158 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
 END;
 /
+
+-- =============================================================================
+-- INSERCIÓN DE DATOS DE PRUEBA (DML) - PROYECTO CLIMATECT (ORACLE XE 21c)
+-- Asignatura: Base de Datos II
+-- Estudiante: Brayan David Arévalo Luna
+-- Motor: Oracle Database 21c Express Edition (XEPDB1)
+-- =============================================================================
+
+-- 1. Clientes (Los IDs generados automáticamente por IDENTITY serán 2, 3, 4, 5, 6)
+INSERT INTO cliente (tipo_documento, numero_documento, nombre, telefono, email) VALUES
+('CC', '1065001001', 'Hotel Guajira Real', '3001112233', 'contacto@guajirareal.com');
+
+INSERT INTO cliente (tipo_documento, numero_documento, nombre, telefono, email) VALUES
+('NIT', '900123456-1', 'Centro Comercial Viva', '3102223344', 'mantenimiento@viva.com');
+
+INSERT INTO cliente (tipo_documento, numero_documento, nombre, telefono, email) VALUES
+('CC', '1065001002', 'Restaurante El Mar', '3203334455', 'admin@elmar.com');
+
+INSERT INTO cliente (tipo_documento, numero_documento, nombre, telefono, email) VALUES
+('CC', '1065001003', 'Clinica del Norte', '3014445566', 'biomedica@clinicanorte.com');
+
+INSERT INTO cliente (tipo_documento, numero_documento, nombre, telefono, email) VALUES
+('NIT', '800987654-3', 'Supermercado Metro', '3155556677', 'servicios@metro.com');
+
+-- 2. Equipos (Asociados a los clientes con cliente_id: 2 al 6)
+INSERT INTO equipo (cliente_id, nombre, descripcion) VALUES
+(2, 'Aire Central Chiller 50TR', 'Ubicado en terraza principal del Hotel');
+
+INSERT INTO equipo (cliente_id, nombre, descripcion) VALUES
+(2, 'Split 24000 BTU - Recepcion', 'Mantenimiento mensual requerido');
+
+INSERT INTO equipo (cliente_id, nombre, descripcion) VALUES
+(3, 'Torre de Enfriamiento B1', 'Planta baja zona comercial');
+
+INSERT INTO equipo (cliente_id, nombre, descripcion) VALUES
+(4, 'Cámara Frigorífica Carnes', 'Temperatura de congelación -18C');
+
+INSERT INTO equipo (cliente_id, nombre, descripcion) VALUES
+(5, 'Aire Precisión Quirófano 1', 'Filtro HEPA e higrometria controlada');
+
+INSERT INTO equipo (cliente_id, nombre, descripcion) VALUES
+(6, 'Cortina de Aire Entrada', 'Sistema de paso continuo');
+
+-- 3. Técnicos (IDs generados: 1, 2, 3, 4)
+INSERT INTO tecnico (nombre, descripcion) VALUES
+('Brayan Arévalo', 'Técnico Especialista en Refrigeración Industrial');
+
+INSERT INTO tecnico (nombre, descripcion) VALUES
+('Carlos Mendoza', 'Técnico de Campo - Climatización Comercial');
+
+INSERT INTO tecnico (nombre, descripcion) VALUES
+('Andrés Villamizar', 'Especialista en Diagnóstico Eléctrico');
+
+INSERT INTO tecnico (nombre, descripcion) VALUES
+('Diana Marcela Gómez', 'Supervisora de Mantenimiento Preventivo');
+
+-- 4. Repuestos (IDs generados: 1, 2, 3, 4, 5, 6)
+INSERT INTO repuesto (nombre, descripcion, precio) VALUES
+('Compresor Scroll 5HP', 'Compresor hermético R410A', 1250000.00);
+
+INSERT INTO repuesto (nombre, descripcion, precio) VALUES
+('Capacitor de Marcha 45uF', 'Capacitor para motor monofásico', 45000.00);
+
+INSERT INTO repuesto (nombre, descripcion, precio) VALUES
+('Gas Refrigerante R410A (Cilindro 11.3kg)', 'Refrigerante ecológico', 380000.00);
+
+INSERT INTO repuesto (nombre, descripcion, precio) VALUES
+('Filtro Secador 3/8 Soldable', 'Filtro deshidratador líquido', 65000.00);
+
+INSERT INTO repuesto (nombre, descripcion, precio) VALUES
+('Válvula de Expansión Termostática', 'Control de flujo de refrigerante', 210000.00);
+
+INSERT INTO repuesto (nombre, descripcion, precio) VALUES
+('Motor Ventilador Condensador 1/3HP', 'Motor de alta eficiencia', 320000.00);
+
+-- 5. Órdenes de Servicio (Asociadas a clientes 2..5, equipos 1..5 y técnicos 1..3)
+INSERT INTO orden_servicio (cliente_id, equipo_id, tecnico_id, numero, fecha_apertura, total, estado) VALUES
+(2, 1, 1, 'OS-2026-001', TO_TIMESTAMP('2026-08-01 08:30:00', 'YYYY-MM-DD HH24:MI:SS'), 1630000.00, 'CERRADA');
+
+INSERT INTO orden_servicio (cliente_id, equipo_id, tecnico_id, numero, fecha_apertura, total, estado) VALUES
+(2, 2, 2, 'OS-2026-002', TO_TIMESTAMP('2026-08-05 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 445000.00, 'CERRADA');
+
+INSERT INTO orden_servicio (cliente_id, equipo_id, tecnico_id, numero, fecha_apertura, total, estado) VALUES
+(3, 3, 1, 'OS-2026-003', TO_TIMESTAMP('2026-08-10 14:15:00', 'YYYY-MM-DD HH24:MI:SS'), 1250000.00, 'REPARACION');
+
+INSERT INTO orden_servicio (cliente_id, equipo_id, tecnico_id, numero, fecha_apertura, total, estado) VALUES
+(4, 4, 3, 'OS-2026-004', TO_TIMESTAMP('2026-08-15 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), 210000.00, 'DIAGNOSTICO');
+
+INSERT INTO orden_servicio (cliente_id, equipo_id, tecnico_id, numero, fecha_apertura, total, estado) VALUES
+(5, 5, 2, 'OS-2026-005', TO_TIMESTAMP('2026-08-20 11:30:00', 'YYYY-MM-DD HH24:MI:SS'), 0.00, 'ABIERTA');
+
+-- 6. Consumo de Repuestos (Asociados a las órdenes 1, 2 y 3)
+INSERT INTO consumo_repuesto (orden_servicio_id, repuesto_id, cantidad, precio_unitario) VALUES
+(1, 1, 1, 1250000.00);
+
+INSERT INTO consumo_repuesto (orden_servicio_id, repuesto_id, cantidad, precio_unitario) VALUES
+(1, 3, 1, 380000.00);
+
+INSERT INTO consumo_repuesto (orden_servicio_id, repuesto_id, cantidad, precio_unitario) VALUES
+(2, 3, 1, 380000.00);
+
+INSERT INTO consumo_repuesto (orden_servicio_id, repuesto_id, cantidad, precio_unitario) VALUES
+(2, 4, 1, 65000.00);
+
+INSERT INTO consumo_repuesto (orden_servicio_id, repuesto_id, cantidad, precio_unitario) VALUES
+(3, 1, 1, 1250000.00);
+
+-- 7. Diagnósticos (Asociados a las órdenes 1 a 5)
+INSERT INTO diagnostico (orden_servicio_id, nombre, descripcion) VALUES
+(1, 'Fuga de Gas Refrigerante y Compresor Quemado', 'Se detecta pérdida de presión en tubería principal y falla eléctrica en compresor');
+
+INSERT INTO diagnostico (orden_servicio_id, nombre, descripcion) VALUES
+(2, 'Obstrucción en Filtro Secador', 'Filtro deshidratador tapado por impurezas en la línea de líquido');
+
+INSERT INTO diagnostico (orden_servicio_id, nombre, descripcion) VALUES
+(3, 'Desgaste en Rodamientos de Ventilador', 'Ruido excesivo y sobrecalentamiento por falta de lubricación');
+
+INSERT INTO diagnostico (orden_servicio_id, nombre, descripcion) VALUES
+(4, 'Falla en Tarjeta de Control', 'Sensor de temperatura descalibrado arrojando error de lectura');
+
+INSERT INTO diagnostico (orden_servicio_id, nombre, descripcion) VALUES
+(5, 'Revisión General de Rutina', 'Inspección de presiones y limpieza de serpentín condensador');
+
+-- 8. Cotizaciones (Asociadas a las órdenes 1 a 4)
+INSERT INTO cotizacion (orden_servicio_id, nombre, descripcion, monto_total, estado) VALUES
+(1, 'Cotización Reparación Chiller', 'Incluye cambio de compresor 5HP y recarga de gas R410A', 1630000.00, 'APROBADA');
+
+INSERT INTO cotizacion (orden_servicio_id, nombre, descripcion, monto_total, estado) VALUES
+(2, 'Cotización Mantenimiento Correctivo B1', 'Reemplazo de filtro secador y recarga parcial', 445000.00, 'APROBADA');
+
+INSERT INTO cotizacion (orden_servicio_id, nombre, descripcion, monto_total, estado) VALUES
+(3, 'Cotización Cambio Compresor Cámara', 'Reemplazo de unidad hermética para refrigeración', 1250000.00, 'PENDIENTE');
+
+INSERT INTO cotizacion (orden_servicio_id, nombre, descripcion, monto_total, estado) VALUES
+(4, 'Cotización Diagnóstico Electrónico', 'Reparación de tarjeta principal de control', 210000.00, 'RECHAZADA');
+
+-- 9. Pagos
+INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
+('ORDEN_SERVICIO', 1, 'TRANSFERENCIA', 1630000.00, TO_TIMESTAMP('2026-08-02 10:15:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
+
+INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
+('ORDEN_SERVICIO', 2, 'EFECTIVO', 445000.00, TO_TIMESTAMP('2026-08-06 16:30:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
+
+INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
+('COTIZACION', 1, 'TARJETA_CREDITO', 500000.00, TO_TIMESTAMP('2026-08-01 11:00:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
+
+-- 10. Garantías (Asociadas a las órdenes 1 y 2)
+INSERT INTO garantia (orden_servicio_id, nombre, descripcion, fecha_inicio, fecha_fin) VALUES
+(1, 'Garantía Mantenimiento Chiller 6 Meses', 'Covers fallas de instalación y repuestos reemplazados', TO_DATE('2026-08-02', 'YYYY-MM-DD'), TO_DATE('2027-02-02', 'YYYY-MM-DD'));
+
+INSERT INTO garantia (orden_servicio_id, nombre, descripcion, fecha_inicio, fecha_fin) VALUES
+(2, 'Garantía Mantenimiento Preventivo 3 Meses', 'Garantía estándar sobre limpieza y filtro', TO_DATE('2026-08-06', 'YYYY-MM-DD'), TO_DATE('2026-11-06', 'YYYY-MM-DD'));
+
+-- Confirmar la transacción en Oracle
+COMMIT;
