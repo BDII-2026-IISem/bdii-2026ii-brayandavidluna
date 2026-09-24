@@ -52,28 +52,28 @@ Se desplegaron las 16 tablas correspondientes al modelo RBAC y al dominio ClimaT
 
 ### 2.3 Agrupación y Funciones de Agregación
 1. **Conteo por Técnico (`GROUP BY`):**  
-   ![GROUP BY](11_group_by.png)
+  ![GROUP BY](11_group_by.png)
 
 2. **Filtro sobre Agregaciones (`HAVING`):**  
-   ![HAVING](12_having.png)
+  ![HAVING](12_having.png)
 
 ---
 
 ### 2.4 Combinaciones Multitabla (JOIN)
 1. **Coincidencia Exacta (`INNER JOIN`):**  
-   ![INNER JOIN](13_join_inner.png)
+  ![INNER JOIN](13_join_inner.png)
 
 2. **Inclusión Total de la Izquierda (`LEFT JOIN`):**  
-   ![LEFT JOIN](14_join_left.png)
+  ![LEFT JOIN](14_join_left.png)
 
 ---
 
 ### 2.5 Subconsultas y Paginación
 1. **Subconsulta Anidada sobre Promedio (`AVG`):**  
-   ![Subconsulta](15_subconsulta.png)
+  ![Subconsulta](15_subconsulta.png)
 
 2. **Paginación de Resultados (`LIMIT`):**  
-   ![LIMIT](16_limit.png)
+  ![LIMIT](16_limit.png)
 
 ---
 
