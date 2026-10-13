@@ -1,8 +1,7 @@
 -- =============================================================================
--- PROCEDIMIENTOS ALMACENADOS (STORED PROCEDURES) - CLIMATECT (MYSQL 8.0)
--- Asignatura: Base de Datos II
+-- PARTE 1: NARRATIVA, CONSULTAS AVANZADAS, PROCEDIMIENTOS ALMACENADOS PARAMETRIZADOS
+-- Y TRIGGERS PARA CLIMATECT (MYSQL 8.0)
 -- Estudiante: Brayan David Arévalo Luna
--- Motor: MySQL 8.0 (bd_clima_tec)
 -- =============================================================================
 
 USE bd_clima_tec;
@@ -10,163 +9,137 @@ USE bd_clima_tec;
 DELIMITER //
 
 -- -----------------------------------------------------------------------------
--- 1. FILTRADO BÁSICO Y CONDICIONAL (WHERE)
+-- 1. CONSULTA / SP PARAMETRIZADO: Filtrado de Clientes por Tipo de Documento
+-- NARRATIVA: El departamento de atención al cliente requiere consultar la lista 
+-- de clientes filtrando dinámicamente por su tipo de documento (CC, NIT, CE, etc.)
+-- para generar reportes segmentados de la base de usuarios.
+-- PASO A PASO:
+--   1. Se define el procedimiento `sp_obtener_clientes_por_tipo_doc` recibiendo el parámetro `p_tipo_doc`.
+--   2. Se ejecuta la consulta `SELECT` sobre la tabla `cliente` filtrando donde `tipo_documento = p_tipo_doc`.
 -- -----------------------------------------------------------------------------
-
--- 1.1 Filtrado por Igualdad / Condición Exacta
-DROP PROCEDURE IF EXISTS sp_obtener_clientes_cc//
-CREATE PROCEDURE sp_obtener_clientes_cc()
+DROP PROCEDURE IF EXISTS sp_obtener_clientes_por_tipo_doc//
+CREATE PROCEDURE sp_obtener_clientes_por_tipo_doc(
+    IN p_tipo_doc VARCHAR(10)
+)
 BEGIN
-    SELECT * FROM cliente 
-    WHERE tipo_documento = 'CC';
+    SELECT id, nombre, tipo_documento, numero_documento, telefono, email 
+    FROM cliente 
+    WHERE tipo_documento = p_tipo_doc;
 END//
-
--- 1.2 Operadores Lógicos (AND, OR, NOT)
-DROP PROCEDURE IF EXISTS sp_obtener_ordenes_cerradas_reparacion//
-CREATE PROCEDURE sp_obtener_ordenes_cerradas_reparacion()
-BEGIN
-    SELECT * FROM orden_servicio 
-    WHERE estado = 'CERRADA' OR estado = 'REPARACION';
-END//
-
--- 1.3 Búsqueda de Patrones de Texto (LIKE)
-DROP PROCEDURE IF EXISTS sp_buscar_repuesto_compresor//
-CREATE PROCEDURE sp_buscar_repuesto_compresor()
-BEGIN
-    SELECT * FROM repuesto 
-    WHERE nombre LIKE '%compresor%';
-END//
-
--- 1.4 Rangos de Valores (BETWEEN)
-DROP PROCEDURE IF EXISTS sp_obtener_ordenes_agosto_2026//
-CREATE PROCEDURE sp_obtener_ordenes_agosto_2026()
-BEGIN
-    SELECT * FROM orden_servicio 
-    WHERE fecha_apertura BETWEEN '2026-08-01 00:00:00' AND '2026-08-31 23:59:59';
-END//
-
--- 1.5 Listas de Opciones (IN)
-DROP PROCEDURE IF EXISTS sp_obtener_tecnicos_especificos//
-CREATE PROCEDURE sp_obtener_tecnicos_especificos()
-BEGIN
-    SELECT * FROM tecnico 
-    WHERE id IN (1, 2, 3);
-END//
-
--- 1.6 Manejo de Valores Nulos (IS NULL)
-DROP PROCEDURE IF EXISTS sp_obtener_ordenes_sin_cerrar//
-CREATE PROCEDURE sp_obtener_ordenes_sin_cerrar()
-BEGIN
-    SELECT * FROM orden_servicio 
-    WHERE fecha_cierre IS NULL;
-END//
-
 
 -- -----------------------------------------------------------------------------
--- 2. ORDENAMIENTO DE RESULTADOS (ORDER BY)
+-- 2. CONSULTA / SP PARAMETRIZADO: Búsqueda de Repuestos por Nombre
+-- NARRATIVA: El área de almacén e inventario necesita buscar repuestos mediante 
+-- un patrón de texto coincidente (como 'compresor' o 'filtro') para verificar 
+-- la disponibilidad, descripción y precio unitario en el catálogo.
+-- PASO A PASO:
+--   1. Se crea la rutina `sp_buscar_repuestos_por_nombre` aceptando `p_patron`.
+--   2. Se utiliza la función `LIKE` concatenada con wildcards `%` sobre la columna `nombre`.
 -- -----------------------------------------------------------------------------
-
-DROP PROCEDURE IF EXISTS sp_obtener_repuestos_mas_caros//
-CREATE PROCEDURE sp_obtener_repuestos_mas_caros()
+DROP PROCEDURE IF EXISTS sp_buscar_repuestos_por_nombre//
+CREATE PROCEDURE sp_buscar_repuestos_por_nombre(
+    IN p_patron VARCHAR(100)
+)
 BEGIN
-    SELECT nombre, precio 
+    SELECT id, nombre, descripcion, precio 
     FROM repuesto 
-    ORDER BY precio DESC;
+    WHERE nombre LIKE CONCAT('%', p_patron, '%');
 END//
 
-
 -- -----------------------------------------------------------------------------
--- 3. AGRUPACIÓN Y FUNCIONES DE AGREGACIÓN (GROUP BY / HAVING)
+-- 3. CONSULTA / SP PARAMETRIZADO: Órdenes de Servicio por Rango de Fechas y Estado
+-- NARRATIVA: La gerencia técnica requiere auditar y fiscalizar el flujo de órdenes 
+-- de servicio que fueron abiertas dentro de un periodo específico y que coincidan 
+-- con un estado operativo determinado ('CERRADA', 'EN_PROCESO', etc.).
+-- PASO A PASO:
+--   1. Se recibe un rango temporal (`p_fecha_inicio` y `p_fecha_fin`) y el estado (`p_estado`).
+--   2. Se filtra con la cláusula `BETWEEN` sobre `fecha_apertura` e igualdad sobre `estado`.
 -- -----------------------------------------------------------------------------
-
--- 3.1 Agregaciones Básicas (COUNT)
-DROP PROCEDURE IF EXISTS sp_conteo_ordenes_por_tecnico//
-CREATE PROCEDURE sp_conteo_ordenes_por_tecnico()
+DROP PROCEDURE IF EXISTS sp_obtener_ordenes_por_fecha_y_estado//
+CREATE PROCEDURE sp_obtener_ordenes_por_fecha_y_estado(
+    IN p_fecha_inicio DATETIME,
+    IN p_fecha_fin DATETIME,
+    IN p_estado VARCHAR(20)
+)
 BEGIN
-    SELECT tecnico_id, COUNT(*) AS total_ordenes
-    FROM orden_servicio
-    GROUP BY tecnico_id;
+    SELECT id, numero, fecha_apertura, estado, cliente_id, tecnico_id 
+    FROM orden_servicio 
+    WHERE fecha_apertura BETWEEN p_fecha_inicio AND p_fecha_fin
+      AND estado = p_estado;
 END//
 
--- 3.2 Filtrado sobre Agrupaciones (HAVING)
-DROP PROCEDURE IF EXISTS sp_tecnicos_mas_de_una_orden//
-CREATE PROCEDURE sp_tecnicos_mas_de_una_orden()
+-- -----------------------------------------------------------------------------
+-- 4. CONSULTA / SP PARAMETRIZADO: Conteo de Órdenes Atendidas por Técnico con Filtro
+-- NARRATIVA: El coordinador de personal necesita identificar a los técnicos que han 
+-- acumulado un número de órdenes asignadas mayor o igual a un umbral paramétrico 
+-- para balancear la carga laboral y calcular bonificaciones.
+-- PASO A PASO:
+--   1. Se realiza un `INNER JOIN` entre la tabla `tecnico` y `orden_servicio`.
+--   2. Se agrupa por técnico (`GROUP BY`) y se aplica la restricción de agregación `HAVING COUNT(*) >= p_minimo_ordenes`.
+-- -----------------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS sp_tecnicos_con_minimo_ordenes//
+CREATE PROCEDURE sp_tecnicos_con_minimo_ordenes(
+    IN p_minimo_ordenes INT
+)
 BEGIN
-    SELECT tecnico_id, COUNT(*) AS total_ordenes
-    FROM orden_servicio
-    GROUP BY tecnico_id
-    HAVING COUNT(*) > 1;
+    SELECT t.id, t.nombre AS tecnico, COUNT(os.id) AS total_ordenes
+    FROM tecnico t
+    INNER JOIN orden_servicio os ON os.tecnico_id = t.id
+    GROUP BY t.id, t.nombre
+    HAVING COUNT(os.id) >= p_minimo_ordenes;
 END//
 
-
 -- -----------------------------------------------------------------------------
--- 4. CONSULTAS MULTITABLA / COMBINACIONES (JOIN)
+-- 5. CONSULTA / SP PARAMETRIZADO: Reporte de Inversión en Repuestos por Cliente
+-- NARRATIVA: Se requiere un informe financiero consolidado para listar a los clientes 
+-- cuya inversión acumulada en repuestos consumidos dentro de órdenes cerradas supere 
+-- un monto límite parametrizado.
+-- PASO A PASO:
+--   1. Se relacionan las entidades `consumo_repuesto`, `orden_servicio` y `cliente` mediante `JOIN`.
+--   2. Se filtra por órdenes cerradas (`WHERE os.estado = 'CERRADA'`).
+--   3. Se agrupa por cliente calculando el total invertido (`SUM(cantidad * precio_unitario)`) y se filtra con `HAVING >= p_monto_minimo`.
 -- -----------------------------------------------------------------------------
-
--- 4.1 INNER JOIN
-DROP PROCEDURE IF EXISTS sp_obtener_clientes_con_equipos//
-CREATE PROCEDURE sp_obtener_clientes_con_equipos()
-BEGIN
-    SELECT c.nombre AS cliente, e.nombre AS equipo
-    FROM equipo e
-    INNER JOIN cliente c ON e.cliente_id = c.id;
-END//
-
--- 4.2 LEFT JOIN
-DROP PROCEDURE IF EXISTS sp_obtener_ordenes_con_diagnostico//
-CREATE PROCEDURE sp_obtener_ordenes_con_diagnostico()
-BEGIN
-    SELECT os.numero, d.nombre AS diagnostico
-    FROM orden_servicio os
-    LEFT JOIN diagnostico d ON d.orden_servicio_id = os.id;
-END//
-
-
--- -----------------------------------------------------------------------------
--- 5. SUBCONSULTAS (CONSULTAS ANIDADAS)
--- -----------------------------------------------------------------------------
-
-DROP PROCEDURE IF EXISTS sp_repuestos_sobre_promedio//
-CREATE PROCEDURE sp_repuestos_sobre_promedio()
-BEGIN
-    SELECT nombre, precio 
-    FROM repuesto 
-    WHERE precio > (SELECT AVG(precio) FROM repuesto);
-END//
-
-
--- -----------------------------------------------------------------------------
--- 6. PAGINACIÓN Y LÍMITES DE RESULTADOS (LIMIT)
--- -----------------------------------------------------------------------------
-
-DROP PROCEDURE IF EXISTS sp_top_3_repuestos_costosos//
-CREATE PROCEDURE sp_top_3_repuestos_costosos()
-BEGIN
-    SELECT nombre, precio 
-    FROM repuesto 
-    ORDER BY precio DESC 
-    LIMIT 3;
-END//
-
-
--- -----------------------------------------------------------------------------
--- 7. CONSULTA INTEGRAL DE NEGOCIO (WHERE + JOIN + GROUP BY + HAVING + ORDER BY)
--- -----------------------------------------------------------------------------
-
 DROP PROCEDURE IF EXISTS sp_reporte_inversion_repuestos_cliente//
-CREATE PROCEDURE sp_reporte_inversion_repuestos_cliente()
+CREATE PROCEDURE sp_reporte_inversion_repuestos_cliente(
+    IN p_monto_minimo DECIMAL(12,2)
+)
 BEGIN
     SELECT 
+        c.id AS cliente_id,
         c.nombre AS cliente,
         COUNT(cr.id) AS cantidad_repuestos_usados,
         SUM(cr.cantidad * cr.precio_unitario) AS total_invertido
     FROM consumo_repuesto cr
-    JOIN orden_servicio os ON cr.orden_servicio_id = os.id
-    JOIN cliente c ON os.cliente_id = c.id
+    INNER JOIN orden_servicio os ON cr.orden_servicio_id = os.id
+    INNER JOIN cliente c ON os.cliente_id = c.id
     WHERE os.estado = 'CERRADA'
     GROUP BY c.id, c.nombre
-    HAVING SUM(cr.cantidad * cr.precio_unitario) > 500000
+    HAVING SUM(cr.cantidad * cr.precio_unitario) >= p_monto_minimo
     ORDER BY total_invertido DESC;
+END//
+
+-- -----------------------------------------------------------------------------
+-- TRIGGERS (DISPARADORES DE NEGOCIO)
+-- -----------------------------------------------------------------------------
+
+-- Trigger 1: Auditoría Automática de Cierre de Órdenes de Servicio
+-- NARRATIVA: Para evitar omisiones humanas al cerrar una orden técnica, cuando 
+-- una orden pase al estado 'CERRADA', el sistema asignará automáticamente la fecha 
+-- y hora actual del servidor en `fecha_cierre` si este campo no fue suministrado.
+-- PASO A PASO:
+--   1. Se declara un disparador de tipo `BEFORE UPDATE` sobre `orden_servicio`.
+--   2. Se valida si el nuevo estado (`NEW.estado`) es 'CERRADA' y difiere del estado anterior (`OLD.estado`).
+--   3. En caso afirmativo y si `NEW.fecha_cierre` está nulo, se establece `SET NEW.fecha_cierre = NOW()`.
+DROP TRIGGER IF EXISTS trg_orden_servicio_auto_cierre//
+CREATE TRIGGER trg_orden_servicio_auto_cierre
+BEFORE UPDATE ON orden_servicio
+FOR EACH ROW
+BEGIN
+    IF NEW.estado = 'CERRADA' AND OLD.estado <> 'CERRADA' THEN
+        IF NEW.fecha_cierre IS NULL THEN
+            SET NEW.fecha_cierre = NOW();
+        END IF;
+    END IF;
 END//
 
 DELIMITER ;
