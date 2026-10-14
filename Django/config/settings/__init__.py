@@ -26,11 +26,16 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # App de autenticación (ISS-03)
+    "authentication",
     # Apps del negocio (ISS-02)
     "clients",
     "products",
     "sales",
 ]
+
+# Modelo de Usuario Personalizado (ISS-03)
+AUTH_USER_MODEL = "authentication.CustomUser"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

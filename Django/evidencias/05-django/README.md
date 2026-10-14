@@ -48,3 +48,18 @@
 
 ### 11. Registro en `INSTALLED_APPS` y Verificación del Sistema (`python manage.py check`)
 ![Check de Django Exitoso](11_iss02_settings_check_ok.png)
+
+---
+
+## Puntos de Control ISS-03: Modelo de Usuario Personalizado (CustomUser)
+
+### Error de Conflicto en el Historial de Migraciones
+Al definir `AUTH_USER_MODEL = "authentication.CustomUser"` en una base de datos donde ya se habian aplicado las migraciones iniciales de Django (`admin`, `auth`, `contenttypes`), se genera el error `InconsistentMigrationHistory`. Esto ocurre debido a que la tabla `admin.0001_initial` intenta ejecutarse antes de la dependencia del modelo de usuario personalizado.
+
+Para resolver este conflicto, se procedio a limpiar el historial borrando la base de datos `bd_clima_tec` en MySQL y recreandola desde cero para garantizar la ejecucion secuencial limpia.
+
+### Inspeccion de la Base de Datos Limpia bd_clima_tec en DBeaver
+![Base de datos limpia en DBeaver](12_iss03_dbeaver_database_clean.png)
+
+### Definicion de CustomUser y Ejecucion Secuencial Exitosa de Migraciones
+![Migracion CustomUser Exitosa](13_iss03_customuser_migration_ok.png)
