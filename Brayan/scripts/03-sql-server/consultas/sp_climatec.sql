@@ -1,116 +1,129 @@
 -- =============================================================================
--- PROCEDIMIENTOS ALMACENADOS (STORED PROCEDURES) - CLIMATECT (SQL SERVER 2022)
--- Asignatura: Base de Datos II
+-- PARTE 1: NARRATIVA, PROCEDIMIENTOS ALMACENADOS PARAMETRIZADOS
+-- Y TRIGGERS PARA CLIMATECT (MS SQL SERVER 2022 - T-SQL)
 -- Estudiante: Brayan David Arévalo Luna
--- Motor: MS SQL Server 2022 (bd_clima_tec)
+-- Motor: MS SQL Server 2022 (`bd_clima_tec`)
 -- =============================================================================
 
 USE bd_clima_tec;
+GO
 
--- 1.1 Filtrado por Cédula
-CREATE OR ALTER PROCEDURE sp_obtener_clientes_cc
+-- -----------------------------------------------------------------------------
+-- 1. SP PARAMETRIZADO: Filtrado de Clientes por Tipo de Documento
+-- NARRATIVA: El departamento de atención al cliente requiere obtener la lista 
+-- de clientes filtrando dinámicamente por tipo de documento (CC, NIT, CE, etc.).
+-- -----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE sp_obtener_clientes_por_tipo_doc
+    @p_tipo_doc NVARCHAR(10)
 AS
 BEGIN
-    SELECT * FROM cliente WHERE tipo_documento = 'CC';
+    SET NOCOUNT ON;
+    SELECT id, nombre, tipo_documento, numero_documento, telefono, email 
+    FROM cliente 
+    WHERE tipo_documento = @p_tipo_doc;
 END;
+GO
 
--- 1.2 Órdenes Cerradas o Reparación
-CREATE OR ALTER PROCEDURE sp_obtener_ordenes_cerradas_reparacion
+-- -----------------------------------------------------------------------------
+-- 2. SP PARAMETRIZADO: Búsqueda de Repuestos por Nombre
+-- NARRATIVA: El área de almacén e inventario necesita buscar repuestos mediante 
+-- un patrón de texto coincidente para verificar disponibilidad y precio unitario.
+-- -----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE sp_buscar_repuestos_por_nombre
+    @p_patron NVARCHAR(100)
 AS
 BEGIN
-    SELECT * FROM orden_servicio WHERE estado = 'CERRADA' OR estado = 'REPARACION';
+    SET NOCOUNT ON;
+    SELECT id, nombre, descripcion, precio 
+    FROM repuesto 
+    WHERE nombre LIKE '%' + @p_patron + '%';
 END;
+GO
 
--- 1.3 Búsqueda por Patrón (LIKE)
-CREATE OR ALTER PROCEDURE sp_buscar_repuesto_compresor
+-- -----------------------------------------------------------------------------
+-- 3. SP PARAMETRIZADO: Órdenes de Servicio por Rango de Fechas y Estado
+-- NARRATIVA: La gerencia técnica requiere auditar las órdenes de servicio que fueron 
+-- abiertas dentro de un periodo específico y que coincidan con un estado determinado.
+-- -----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE sp_obtener_ordenes_por_fecha_y_estado
+    @p_fecha_inicio DATETIME2,
+    @p_fecha_fin DATETIME2,
+    @p_estado NVARCHAR(30)
 AS
 BEGIN
-    SELECT * FROM repuesto WHERE nombre LIKE '%compresor%';
+    SET NOCOUNT ON;
+    SELECT id, numero, fecha_apertura, estado, cliente_id, tecnico_id 
+    FROM orden_servicio 
+    WHERE fecha_apertura BETWEEN @p_fecha_inicio AND @p_fecha_fin
+      AND estado = @p_estado;
 END;
+GO
 
--- 1.4 Rangos (BETWEEN)
-CREATE OR ALTER PROCEDURE sp_obtener_ordenes_agosto_2026
+-- -----------------------------------------------------------------------------
+-- 4. SP PARAMETRIZADO: Conteo de Órdenes Atendidas por Técnico
+-- NARRATIVA: El coordinador de personal necesita listar los técnicos que han acumulado 
+-- un número de órdenes asignadas mayor o igual a un umbral paramétrico.
+-- -----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE sp_tecnicos_con_minimo_ordenes
+    @p_minimo_ordenes INT
 AS
 BEGIN
-    SELECT * FROM orden_servicio WHERE fecha_apertura BETWEEN '2026-08-01 00:00:00' AND '2026-08-31 23:59:59';
+    SET NOCOUNT ON;
+    SELECT t.id AS tecnico_id, t.nombre AS tecnico, COUNT(os.id) AS total_ordenes
+    FROM tecnico t
+    INNER JOIN orden_servicio os ON os.tecnico_id = t.id
+    GROUP BY t.id, t.nombre
+    HAVING COUNT(os.id) >= @p_minimo_ordenes;
 END;
+GO
 
--- 1.5 Listas (IN)
-CREATE OR ALTER PROCEDURE sp_obtener_tecnicos_especificos
-AS
-BEGIN
-    SELECT * FROM tecnico WHERE id IN (1, 2, 3);
-END;
-
--- 1.6 Nulos (IS NULL)
-CREATE OR ALTER PROCEDURE sp_obtener_ordenes_sin_cerrar
-AS
-BEGIN
-    SELECT * FROM orden_servicio WHERE fecha_cierre IS NULL;
-END;
-
--- 2. Ordenamiento
-CREATE OR ALTER PROCEDURE sp_obtener_repuestos_mas_caros
-AS
-BEGIN
-    SELECT nombre, precio FROM repuesto ORDER BY precio DESC;
-END;
-
--- 3.1 Agregación (COUNT)
-CREATE OR ALTER PROCEDURE sp_conteo_ordenes_por_tecnico
-AS
-BEGIN
-    SELECT tecnico_id, COUNT(*) AS total_ordenes FROM orden_servicio GROUP BY tecnico_id;
-END;
-
--- 3.2 Filtro HAVING
-CREATE OR ALTER PROCEDURE sp_tecnicos_mas_de_una_orden
-AS
-BEGIN
-    SELECT tecnico_id, COUNT(*) AS total_ordenes FROM orden_servicio GROUP BY tecnico_id HAVING COUNT(*) > 1;
-END;
-
--- 4.1 INNER JOIN
-CREATE OR ALTER PROCEDURE sp_obtener_clientes_con_equipos
-AS
-BEGIN
-    SELECT c.nombre AS cliente, e.nombre AS equipo FROM equipo e INNER JOIN cliente c ON e.cliente_id = c.id;
-END;
-
--- 4.2 LEFT JOIN
-CREATE OR ALTER PROCEDURE sp_obtener_ordenes_con_diagnostico
-AS
-BEGIN
-    SELECT os.numero, d.nombre AS diagnostico FROM orden_servicio os LEFT JOIN diagnostico d ON d.orden_servicio_id = os.id;
-END;
-
--- 5. Subconsulta
-CREATE OR ALTER PROCEDURE sp_repuestos_sobre_promedio
-AS
-BEGIN
-    SELECT nombre, precio FROM repuesto WHERE precio > (SELECT AVG(precio) FROM repuesto);
-END;
-
--- 6. Paginación TOP 3
-CREATE OR ALTER PROCEDURE sp_top_3_repuestos_costosos
-AS
-BEGIN
-    SELECT TOP 3 nombre, precio FROM repuesto ORDER BY precio DESC;
-END;
-
--- 7. Reporte Consolidado de Negocio
+-- -----------------------------------------------------------------------------
+-- 5. SP PARAMETRIZADO: Reporte de Inversión en Repuestos por Cliente
+-- NARRATIVA: Informe financiero consolidado de clientes cuya inversión acumulada 
+-- en repuestos para órdenes cerradas sea mayor o igual a un monto especificado.
+-- -----------------------------------------------------------------------------
 CREATE OR ALTER PROCEDURE sp_reporte_inversion_repuestos_cliente
+    @p_monto_minimo DECIMAL(12,2)
 AS
 BEGIN
+    SET NOCOUNT ON;
     SELECT 
+        c.id AS cliente_id,
         c.nombre AS cliente,
         COUNT(cr.id) AS cantidad_repuestos_usados,
         SUM(cr.cantidad * cr.precio_unitario) AS total_invertido
     FROM consumo_repuesto cr
-    JOIN orden_servicio os ON cr.orden_servicio_id = os.id
-    JOIN cliente c ON os.cliente_id = c.id
+    INNER JOIN orden_servicio os ON cr.orden_servicio_id = os.id
+    INNER JOIN cliente c ON os.cliente_id = c.id
     WHERE os.estado = 'CERRADA'
     GROUP BY c.id, c.nombre
-    HAVING SUM(cr.cantidad * cr.precio_unitario) > 500000
+    HAVING SUM(cr.cantidad * cr.precio_unitario) >= @p_monto_minimo
     ORDER BY total_invertido DESC;
 END;
+GO
+
+-- -----------------------------------------------------------------------------
+-- TRIGGER DE NEGOCIO EN T-SQL (Auto-cierre de Órdenes de Servicio)
+-- NARRATIVA: Cuando una orden cambia a 'CERRADA', el sistema asigna automáticamente 
+-- la fecha actual en `fecha_cierre` si esta no fue especificada.
+-- -----------------------------------------------------------------------------
+CREATE OR ALTER TRIGGER trg_orden_servicio_auto_cierre
+ON orden_servicio
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    IF UPDATE(estado)
+    BEGIN
+        UPDATE os
+        SET fecha_cierre = GETDATE()
+        FROM orden_servicio os
+        INNER JOIN inserted i ON os.id = i.id
+        INNER JOIN deleted d ON os.id = d.id
+        WHERE i.estado = 'CERRADA' 
+          AND d.estado <> 'CERRADA'
+          AND i.fecha_cierre IS NULL;
+    END
+END;
+GO
