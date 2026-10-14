@@ -63,3 +63,12 @@ Para resolver este conflicto, se procedio a limpiar el historial borrando la bas
 
 ### Definicion de CustomUser y Ejecucion Secuencial Exitosa de Migraciones
 ![Migracion CustomUser Exitosa](13_iss03_customuser_migration_ok.png)
+
+---
+
+## Puntos de Control ISS-04: Modelo Client (Dominio de Clientes)
+
+### Definicion del Modelo Client y Aplicacion de Migracion Inicial
+Se definio la estructura relacional del modelo `Client` en `clients/models.py` con sus respectivos campos de identificacion, contacto y marcas de tiempo (`created_at`, `updated_at`). Posteriormente se ejecutaron los comandos `makemigrations clients` y `migrate` para generar e impactar la tabla `clients` en la base de datos MySQL `bd_clima_tec`.
+
+![Migracion Modelo Client Exitosa](14_iss04_client_migration_ok.png)
