@@ -32,8 +32,21 @@ INSTALLED_APPS = [
     "clients",
     "products",
     "sales",
+    # Django REST Framework (ISS-07)
+    "rest_framework",
 ]
 
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": (
+        "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+        "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
+    ),
+    "DEFAULT_PARSER_CLASSES": (
+        "djangorestframework_camel_case.parser.CamelCaseFormParser",
+        "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
+        "djangorestframework_camel_case.parser.CamelCaseJSONParser",
+    ),
+}
 # Modelo de Usuario Personalizado (ISS-03)
 AUTH_USER_MODEL = "authentication.CustomUser"
 
