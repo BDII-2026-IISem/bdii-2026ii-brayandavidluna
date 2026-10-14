@@ -38,3 +38,13 @@
 
 ### 9. Ejecución Exitosa de Migraciones Base (`python manage.py migrate`)
 ![Migración Exitosa](09_iss01_migrate_ok.png)
+
+---
+
+## ISS-02: Creación y Registro de Aplicaciones del Negocio
+
+### 10. Limpieza de Módulos Conflictivos y Creación de Apps (`clients`, `products`, `sales`)
+![Creación de Apps](10_iss02_rm_duplicate_apps.png)
+
+### 11. Registro en `INSTALLED_APPS` y Verificación del Sistema (`python manage.py check`)
+![Check de Django Exitoso](11_iss02_settings_check_ok.png)
