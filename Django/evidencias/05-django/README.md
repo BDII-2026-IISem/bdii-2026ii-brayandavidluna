@@ -164,3 +164,33 @@ Se implementó `LogoutAPIView` utilizando `.blacklist()` sobre el token de refre
 Se creó `UserProfileSerializer` para la serialización de datos de usuario y extracción dinámica de roles asignados. Se expuso la vista protegida `UserProfileView` bajo el permiso `IsAuthenticated` en el endpoint `/api/v1/auth/me/`, verificando el chequeo completo del proyecto con 0 errores.
 
 ![Verificacion Exitosa del Endpoint de Perfil JWT](35_iss20_user_profile_me_check.png)
+
+---
+
+## Puntos de Control ISS-21 a ISS-25: Permisos Dinámicos RBAC, CRUD Matriz, Semilla y Seguridad HTTP
+
+### ISS-21: Permiso Personalizado HasResourceAccess
+Se implementó la clase `HasResourceAccess` en `authentication/permissions.py` para consultar dinámicamente en la base de datos si el rol del usuario autenticado posee permiso activo sobre el recurso solicitado (`path` y `method` HTTP).
+
+![Permiso HasResourceAccess](36_iss21_has_resource_access.png)
+
+### ISS-22: Protección RBAC en Vistas de Negocio y Resolución de Errores
+Se asignaron las clases de permiso `[IsAuthenticated, HasResourceAccess]` en los ViewSets y APIViews de `clients`, `products` y `sales`. Se corrigió una excepción `ImportError` asociando el serializer `RegisterSaleSerializer` en `sales/serializers.py`.
+
+![Vistas Protegidas por RBAC y Check Exitoso](37_iss22_views_protected_rbac.png)
+
+### ISS-23: CRUD Completo de la Matriz RBAC
+Se crearon los ViewSets y Serializers para la administración de `Role`, `Resource`, `RoleUser` y `ResourceRole`, registrando las rutas dinámicas mediante `DefaultRouter` en `authentication/urls.py`.
+
+![Rutas de Administracion RBAC](38_iss23_rbac_crud_urls.png)
+
+### ISS-24: Semilla de Datos RBAC y Autorización Bearer en Swagger
+Se creó el comando de gestión personalizado `python manage.py seed_rbac` en `authentication/management/commands/seed_rbac.py` para poblar la matriz inicial de seguridad con roles `ADMIN` y `CLIENT`, y se configuró la autenticación Bearer JWT en `drf-spectacular`.
+
+![Ejecución del Seeder RBAC en Terminal](39_iss24_seed_rbac_terminal.png)
+
+### ISS-25: Verificación de Respuestas de Seguridad (HTTP 401 Unauthorized) y Cierre Fase II
+Se validó la restricción de acceso en peticiones sin token JWT al consultar `/api/v1/auth/me/`, obteniendo la respuesta de seguridad `HTTP 401 Unauthorized` tanto en la consola del servidor de desarrollo como en la interfaz del cliente web.
+
+![Registros HTTP 401 en Servidor Django](40_iss25_unauthorized_401_check.png)
+![Respuesta JSON HTTP 401 en Navegador](41_iss25_unauthorized_browser_response.png)
