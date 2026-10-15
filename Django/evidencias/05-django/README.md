@@ -135,3 +135,32 @@ Durante la integración de `djangorestframework-simplejwt`, se identificaron dos
 Posteriormente se registraron los endpoints `/api/v1/auth/token/` y `/api/v1/auth/token/refresh/` en `config/urls.py`, obteniendo la verificacion del sistema con 0 errores.
 
 ![Verificacion del Sistema con SimpleJWT Exitoso](25_iss15_simplejwt_check_ok.png)
+
+---
+
+## Puntos de Control ISS-16 a ISS-20: Autenticación, Rotación JWT, Logout y Perfil RBAC
+
+### ISS-16: Modelos RBAC y Migración en Base de Datos
+Se crearon las entidades `Role`, `RoleUser`, `Resource` y `ResourceRole` en `authentication/models.py`. Se aplicó la migración `0002_role_alter_customuser_options_and_more` asignando `timezone.now` por defecto para el campo de auditoría `created_at`.
+
+![Migracion de Modelos RBAC](31_iss16_rbac_models_migration.png)
+
+### ISS-17: Login Abierto y Personalización de Token Payload
+Se creó `CustomTokenObtainPairSerializer` para incluir las variables de sesión `username` y `email` en la estructura interna del token. Se registró el endpoint público `/api/v1/auth/login/` en `authentication/urls.py`.
+
+![Rutas de Autenticacion e Inseccion del Sistema](32_iss17_login_open_urls.png)
+
+### ISS-18: Refresh Token con Rotación y Lista Negra (Blacklist)
+Se incluyó `rest_framework_simplejwt.token_blacklist` en `INSTALLED_APPS` y se configuraron las opciones `ROTATE_REFRESH_TOKENS` y `BLACKLIST_AFTER_ROTATION` en `config/settings/__init__.py`. Se ejecutaron las migraciones para la persistencia de tokens anulados.
+
+![Aplicacion de Migraciones para Lista Negra de Tokens](33_iss18_token_blacklist_migration.png)
+
+### ISS-19: Endpoint de Logout y Resolución de Excepciones de Importación
+Se implementó `LogoutAPIView` utilizando `.blacklist()` sobre el token de refresco recibido. Se resolvió un error de importación en `authentication/urls.py` derivado del orden de dependencias de `CustomTokenObtainPairView`, restableciendo la validación del sistema sin fallos.
+
+![Resolucion de ImportError y Verificacion Limpia](34_iss19_logout_importerror_resolved.png)
+
+### ISS-20: Perfil del Usuario Autenticado (/auth/me/)
+Se creó `UserProfileSerializer` para la serialización de datos de usuario y extracción dinámica de roles asignados. Se expuso la vista protegida `UserProfileView` bajo el permiso `IsAuthenticated` en el endpoint `/api/v1/auth/me/`, verificando el chequeo completo del proyecto con 0 errores.
+
+![Verificacion Exitosa del Endpoint de Perfil JWT](35_iss20_user_profile_me_check.png)
