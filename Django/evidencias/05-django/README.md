@@ -102,3 +102,36 @@ Se desarrollo `ClientViewSet` en `clients/views.py` e integro con `DefaultRouter
 Se crearon los serializers, viewsets y endpoints para `ProductType` y `Product` bajo `/api/v1/product-types/` y `/api/v1/products/`. Asimismo, se implemento la vista `AvailableProductsListView` en `/api/v1/products-available/` para filtrar unicamente productos activos y con stock superior a cero.
 
 ![API REST de Productos y Check Final](20_iss09_iss10_products_api_check_ok.png)
+
+---
+
+## Puntos de Control ISS-11 a ISS-15: Lógica de Negocio Avanzada, Admin, Swagger y Autenticación JWT
+
+### ISS-11: Registro Transaccional de Ventas (APIView)
+Se implemento la vista `RegisterSaleAPIView` en `sales/views.py` gestionando la transaccionalidad mediante `@transaction.atomic` para decrementar el stock de productos e insertar cabecera y detalles de venta.
+
+![Registro Transaccional de Ventas](21_iss11_register_sale_apiview.png)
+
+### ISS-12: Consulta y Anulación de Ventas
+Se expusieron las vistas de listado/detalle de ventas y el endpoint `CancelSaleAPIView` para anular ventas y reponer las cantidades vendidas al inventario de productos.
+
+![Rutas de Consulta y Anulacion de Ventas](22_iss12_sales_cancel_list_urls.png)
+
+### ISS-13: Configuración e Integración en Django Admin
+Se registraron los modelos de `clients`, `products` y `sales` en sus respectivos archivos `admin.py`, habilitando filtros, campos de busqueda y vista inline para items de venta.
+
+![Configuracion del Admin de Django](23_iss13_django_admin_config.png)
+
+### ISS-14: Documentación OpenAPI e Interfaz Swagger Interactiva
+Se integro `drf-spectacular` exponiendo la documentacion de esquemas en `/api/schema/` e interfaz gráfica interactiva en `/api/docs/`.
+
+![Configuracion de Swagger e Inspeccion sin Errores](24_iss14_openapi_swagger_urls.png)
+
+### ISS-15: Autenticación JWT y Resolución de Excepciones de Configuración
+Durante la integración de `djangorestframework-simplejwt`, se identificaron dos excepciones de configuración:
+1. `TypeError: database_from_environ() missing 1 required positional argument: 'env'`: resuelto pasando explícitamente `os.environ` como argumento a la función de conexion de base de datos en `config/settings/__init__.py`.
+2. `ImproperlyConfigured: The SECRET_KEY setting must not be empty.`: resuelto agregando una validacion condicional que asigna una clave de respaldo cuando `DJANGO_SECRET_KEY` se evalua como cadena vacia.
+
+Posteriormente se registraron los endpoints `/api/v1/auth/token/` y `/api/v1/auth/token/refresh/` en `config/urls.py`, obteniendo la verificacion del sistema con 0 errores.
+
+![Verificacion del Sistema con SimpleJWT Exitoso](25_iss15_simplejwt_check_ok.png)
