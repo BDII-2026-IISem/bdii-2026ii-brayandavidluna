@@ -24,7 +24,6 @@ ALLOWED_HOSTS = [
 # Modelo de usuario personalizado (ISS-03)
 AUTH_USER_MODEL = "authentication.CustomUser"
 
-# Aplicaciones instaladas del sistema y del negocio
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -37,10 +36,12 @@ INSTALLED_APPS = [
     "clients",
     "products",
     "sales",
-    # Django REST Framework y Documentación Swagger
+    # Django REST Framework, Blacklist y Swagger
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
 ]
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -120,4 +121,13 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "StoreLab API - ClimaTec",
     "DESCRIPTION": "Documentación interactiva de endpoints para StoreLab Backend",
     "VERSION": "1.0.0",
+}
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
