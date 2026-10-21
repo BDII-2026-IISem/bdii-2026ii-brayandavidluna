@@ -18,6 +18,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 class AvailableProductsListView(generics.ListAPIView):
-    queryset = Product.objects.filter(stock__gt=0)
+    queryset = Product.objects.filter(is_active=True, stock__gt=0)
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated, HasResourceAccess]

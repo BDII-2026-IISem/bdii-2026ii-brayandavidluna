@@ -10,17 +10,8 @@ class HasResourceAccess(permissions.BasePermission):
         path = request.path
         method = request.method
 
-        user_roles = request.user.user_roles.filter(is_active="ACTIVE").values_list(
-            "role_id", flat=True
-        )
-
-        has_access = ResourceRole.objects.filter(
+        return ResourceRole.objects.filter(
             resource__path=path,
             resource__method=method,
-            resource__is_active="ACTIVE",
-            role_id__in=user_roles,
-            role__is_active="ACTIVE",
-            is_active="ACTIVE",
+            role__role_users__user=request.user,
         ).exists()
-
-        return has_access

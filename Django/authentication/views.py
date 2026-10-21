@@ -33,7 +33,7 @@ class LogoutAPIView(APIView):
 
 
 class UserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasResourceAccess]
 
     def get(self, request):
         serializer = UserProfileSerializer(request.user)

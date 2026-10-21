@@ -1,4 +1,4 @@
-# 📸 Evidencias de Backend en Django (Fase I - Business)
+# Proceso y evidencias del backend Django (Fases I y II)
 
 **Proyecto:** Proyecto 04 - ClimaTec  
 **Asignatura:** Base de Datos II / Backend  
@@ -99,7 +99,7 @@ Se desarrollo `ClientViewSet` en `clients/views.py` e integro con `DefaultRouter
 ![ViewSet y Rutas de Clientes](19_iss08_client_viewset_urls.png)
 
 ### ISS-09 e ISS-10: API de Catálogo de Productos y Listado de Disponibles
-Se crearon los serializers, viewsets y endpoints para `ProductType` y `Product` bajo `/api/v1/product-types/` y `/api/v1/products/`. Asimismo, se implemento la vista `AvailableProductsListView` en `/api/v1/products-available/` para filtrar unicamente productos activos y con stock superior a cero.
+Se crearon los serializers, viewsets y endpoints para `ProductType` y `Product` bajo `/api/v1/product-types/` y `/api/v1/products/`. Asimismo, se implementó la vista `AvailableProductsListView` en `/api/v1/products-available/`, filtrando productos activos (`is_active=True`) y con stock superior a cero.
 
 ![API REST de Productos y Check Final](20_iss09_iss10_products_api_check_ok.png)
 
@@ -108,12 +108,12 @@ Se crearon los serializers, viewsets y endpoints para `ProductType` y `Product` 
 ## Puntos de Control ISS-11 a ISS-15: Lógica de Negocio Avanzada, Admin, Swagger y Autenticación JWT
 
 ### ISS-11: Registro Transaccional de Ventas (APIView)
-Se implemento la vista `RegisterSaleAPIView` en `sales/views.py` gestionando la transaccionalidad mediante `@transaction.atomic` para decrementar el stock de productos e insertar cabecera y detalles de venta.
+La vista `RegisterSaleAPIView` valida cliente, productos y cantidades positivas. Dentro de `transaction.atomic()` bloquea los productos consultados, comprueba existencias, descuenta el inventario, crea la cabecera y sus detalles, y calcula el total. Si un producto no existe, está inactivo o no tiene stock suficiente, la operación se revierte para no dejar una venta parcial.
 
 ![Registro Transaccional de Ventas](21_iss11_register_sale_apiview.png)
 
 ### ISS-12: Consulta y Anulación de Ventas
-Se expusieron las vistas de listado/detalle de ventas y el endpoint `CancelSaleAPIView` para anular ventas y reponer las cantidades vendidas al inventario de productos.
+Se expusieron las vistas de listado y detalle. `CancelSaleAPIView` bloquea la venta, repone las cantidades de sus detalles y cambia su estado a `CANCELLED` dentro de una transacción. Rechaza una segunda anulación para impedir que el inventario se reponga más de una vez.
 
 ![Rutas de Consulta y Anulacion de Ventas](22_iss12_sales_cancel_list_urls.png)
 
@@ -161,7 +161,7 @@ Se implementó `LogoutAPIView` utilizando `.blacklist()` sobre el token de refre
 ![Resolucion de ImportError y Verificacion Limpia](34_iss19_logout_importerror_resolved.png)
 
 ### ISS-20: Perfil del Usuario Autenticado (/auth/me/)
-Se creó `UserProfileSerializer` para la serialización de datos de usuario y extracción dinámica de roles asignados. Se expuso la vista protegida `UserProfileView` bajo el permiso `IsAuthenticated` en el endpoint `/api/v1/auth/me/`, verificando el chequeo completo del proyecto con 0 errores.
+Se creó `UserProfileSerializer` para la serialización de datos de usuario y extracción dinámica de roles asignados. Se expuso `UserProfileView` en `/api/v1/auth/me/`, que requiere autenticación y pasa además por `HasResourceAccess` para validar el permiso asociado al recurso.
 
 ![Verificacion Exitosa del Endpoint de Perfil JWT](35_iss20_user_profile_me_check.png)
 
@@ -170,7 +170,7 @@ Se creó `UserProfileSerializer` para la serialización de datos de usuario y ex
 ## Puntos de Control ISS-21 a ISS-25: Permisos Dinámicos RBAC, CRUD Matriz, Semilla y Seguridad HTTP
 
 ### ISS-21: Permiso Personalizado HasResourceAccess
-Se implementó la clase `HasResourceAccess` en `authentication/permissions.py` para consultar dinámicamente en la base de datos si el rol del usuario autenticado posee permiso activo sobre el recurso solicitado (`path` y `method` HTTP).
+Se implementó la clase `HasResourceAccess` en `authentication/permissions.py` para consultar si algún rol asignado al usuario autenticado está asociado al recurso solicitado (ruta y método HTTP). La consulta recorre las relaciones reales `ResourceRole -> Role -> RoleUser -> CustomUser`; los modelos RBAC no tienen campos `is_active` en esas relaciones.
 
 ![Permiso HasResourceAccess](36_iss21_has_resource_access.png)
 
@@ -186,6 +186,8 @@ Se crearon los ViewSets y Serializers para la administración de `Role`, `Resour
 
 ### ISS-24: Semilla de Datos RBAC y Autorización Bearer en Swagger
 Se creó el comando de gestión personalizado `python manage.py seed_rbac` en `authentication/management/commands/seed_rbac.py` para poblar la matriz inicial de seguridad con roles `ADMIN` y `CLIENT`, y se configuró la autenticación Bearer JWT en `drf-spectacular`.
+
+La semilla crea los roles iniciales y asocia ambos a `GET /api/v1/auth/me/`; no habilita automáticamente las demás rutas. Para autorizar otros endpoints se deben registrar sus recursos y asignar las relaciones correspondientes.
 
 ![Ejecución del Seeder RBAC en Terminal](39_iss24_seed_rbac_terminal.png)
 
