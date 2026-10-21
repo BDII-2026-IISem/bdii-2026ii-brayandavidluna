@@ -6,7 +6,6 @@ Backend académico de **StoreLab**, desarrollado para Base de Datos II con Djang
 **Docente:** Ing. Jaider Quintero M.<br>
 **Periodo:** 2026-II
 
-> Este documento resume qué se construyó, cómo se conectan sus partes y qué conviene explicar en una sustentación. Las capturas y el desarrollo detallado por ISS están en [el índice de evidencias](evidencias/05-django/README.md).
 
 ## 1. Objetivo y arquitectura
 
