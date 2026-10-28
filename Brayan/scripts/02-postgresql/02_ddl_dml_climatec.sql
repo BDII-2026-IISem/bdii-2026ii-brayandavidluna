@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS cliente (
     nombre VARCHAR(150) NOT NULL,
     telefono VARCHAR(30) NOT NULL,
     email VARCHAR(150) NOT NULL,
+    address VARCHAR(255) NULL,
     is_active VARCHAR(20) DEFAULT 'ACTIVE' CHECK (is_active IN ('ACTIVE', 'INACTIVE')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -130,6 +131,7 @@ CREATE TABLE IF NOT EXISTS repuesto (
     nombre VARCHAR(150) NOT NULL,
     descripcion TEXT NULL,
     precio DECIMAL(10,2) NOT NULL,
+    stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
     is_active VARCHAR(20) DEFAULT 'ACTIVE' CHECK (is_active IN ('ACTIVE', 'INACTIVE')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -165,6 +167,8 @@ CREATE TABLE IF NOT EXISTS pago (
     id SERIAL PRIMARY KEY,
     referencia_tipo VARCHAR(50) NOT NULL,
     referencia_id INT NOT NULL,
+    orden_servicio_id INT NULL REFERENCES orden_servicio(id),
+    registrado_por_id INT NULL REFERENCES users(id),
     metodo VARCHAR(50) NOT NULL,
     monto DECIMAL(12,2) NOT NULL,
     fecha TIMESTAMP NOT NULL,
@@ -204,13 +208,14 @@ INSERT INTO tecnico (nombre, descripcion) VALUES
 ('Diana Marcela Gómez', 'Supervisora de Mantenimiento Preventivo');
 
 -- 3. Repuestos
-INSERT INTO repuesto (nombre, descripcion, precio) VALUES
-('Compresor Scroll 5HP', 'Compresor hermético R410A', 1250000.00),
-('Capacitor de Marcha 45uF', 'Capacitor para motor monofásico', 45000.00),
-('Gas Refrigerante R410A (Cilindro 11.3kg)', 'Refrigerante ecológico', 380000.00),
-('Filtro Secador 3/8 Soldable', 'Filtro deshidratador líquido', 65000.00),
-('Válvula de Expansión Termostática', 'Control de flujo de refrigerante', 210000.00),
-('Motor Ventilador Condensador 1/3HP', 'Motor de alta eficiencia', 320000.00);
+-- Existencias restantes después de los consumos de servicio de prueba.
+INSERT INTO repuesto (nombre, descripcion, precio, stock) VALUES
+('Compresor Scroll 5HP', 'Compresor hermético R410A', 1250000.00, 8),
+('Capacitor de Marcha 45uF', 'Capacitor para motor monofásico', 45000.00, 10),
+('Gas Refrigerante R410A (Cilindro 11.3kg)', 'Refrigerante ecológico', 380000.00, 8),
+('Filtro Secador 3/8 Soldable', 'Filtro deshidratador líquido', 65000.00, 9),
+('Válvula de Expansión Termostática', 'Control de flujo de refrigerante', 210000.00, 10),
+('Motor Ventilador Condensador 1/3HP', 'Motor de alta eficiencia', 320000.00, 10);
 
 -- 4. Equipos (Asociados a los IDs de clientes existentes)
 INSERT INTO equipo (cliente_id, nombre, descripcion) VALUES
@@ -253,10 +258,10 @@ INSERT INTO cotizacion (orden_servicio_id, nombre, descripcion, monto_total, est
 (9, 'Cotización Diagnóstico Electrónico', 'Reparación de tarjeta principal de control', 210000.00, 'RECHAZADA');
 
 -- 9. Pagos
-INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
-('ORDEN_SERVICIO', 6, 'TRANSFERENCIA', 1630000.00, '2026-08-02 10:15:00', 'COMPLETADO'),
-('ORDEN_SERVICIO', 7, 'EFECTIVO', 445000.00, '2026-08-06 16:30:00', 'COMPLETADO'),
-('COTIZACION', 1, 'TARJETA_CREDITO', 500000.00, '2026-08-01 11:00:00', 'COMPLETADO');
+INSERT INTO pago (referencia_tipo, referencia_id, orden_servicio_id, metodo, monto, fecha, estado) VALUES
+('ORDEN_SERVICIO', 6, 6, 'TRANSFERENCIA', 1630000.00, '2026-08-02 10:15:00', 'COMPLETADO'),
+('ORDEN_SERVICIO', 7, 7, 'EFECTIVO', 445000.00, '2026-08-06 16:30:00', 'COMPLETADO'),
+('COTIZACION', 1, 6, 'TARJETA_CREDITO', 500000.00, '2026-08-01 11:00:00', 'COMPLETADO');
 
 -- 10. Garantías
 INSERT INTO garantia (orden_servicio_id, nombre, descripcion, fecha_inicio, fecha_fin) VALUES

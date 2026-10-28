@@ -97,6 +97,7 @@ BEGIN
        nombre VARCHAR2(150) NOT NULL,
        telefono VARCHAR2(30) NOT NULL,
        email VARCHAR2(150) NOT NULL,
+       address VARCHAR2(255) NULL,
        is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -175,6 +176,7 @@ BEGIN
        nombre VARCHAR2(150) NOT NULL,
        descripcion CLOB NULL,
        precio NUMBER(10,2) NOT NULL,
+       stock NUMBER DEFAULT 0 NOT NULL CHECK (stock >= 0),
        is_active VARCHAR2(20) DEFAULT ''ACTIVE'' CHECK (is_active IN (''ACTIVE'', ''INACTIVE'')),
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -222,12 +224,16 @@ BEGIN
        id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
        referencia_tipo VARCHAR2(50) NOT NULL,
        referencia_id NUMBER NOT NULL,
+       orden_servicio_id NUMBER NULL,
+       registrado_por_id NUMBER NULL,
        metodo VARCHAR2(50) NOT NULL,
        monto NUMBER(12,2) NOT NULL,
        fecha TIMESTAMP NOT NULL,
        estado VARCHAR2(30) DEFAULT ''COMPLETADO'' CHECK (estado IN (''COMPLETADO'', ''PENDIENTE'', ''ANULADO'')),
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       CONSTRAINT fk_pago_orden FOREIGN KEY (orden_servicio_id) REFERENCES orden_servicio(id),
+       CONSTRAINT fk_pago_usuario FOREIGN KEY (registrado_por_id) REFERENCES users(id)
    )';
 EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
 END;
@@ -306,23 +312,23 @@ INSERT INTO tecnico (nombre, descripcion) VALUES
 ('Diana Marcela Gómez', 'Supervisora de Mantenimiento Preventivo');
 
 -- 4. Repuestos (IDs generados: 1, 2, 3, 4, 5, 6)
-INSERT INTO repuesto (nombre, descripcion, precio) VALUES
-('Compresor Scroll 5HP', 'Compresor hermético R410A', 1250000.00);
+INSERT INTO repuesto (nombre, descripcion, precio, stock) VALUES
+('Compresor Scroll 5HP', 'Compresor hermético R410A', 1250000.00, 8);
 
-INSERT INTO repuesto (nombre, descripcion, precio) VALUES
-('Capacitor de Marcha 45uF', 'Capacitor para motor monofásico', 45000.00);
+INSERT INTO repuesto (nombre, descripcion, precio, stock) VALUES
+('Capacitor de Marcha 45uF', 'Capacitor para motor monofásico', 45000.00, 10);
 
-INSERT INTO repuesto (nombre, descripcion, precio) VALUES
-('Gas Refrigerante R410A (Cilindro 11.3kg)', 'Refrigerante ecológico', 380000.00);
+INSERT INTO repuesto (nombre, descripcion, precio, stock) VALUES
+('Gas Refrigerante R410A (Cilindro 11.3kg)', 'Refrigerante ecológico', 380000.00, 8);
 
-INSERT INTO repuesto (nombre, descripcion, precio) VALUES
-('Filtro Secador 3/8 Soldable', 'Filtro deshidratador líquido', 65000.00);
+INSERT INTO repuesto (nombre, descripcion, precio, stock) VALUES
+('Filtro Secador 3/8 Soldable', 'Filtro deshidratador líquido', 65000.00, 9);
 
-INSERT INTO repuesto (nombre, descripcion, precio) VALUES
-('Válvula de Expansión Termostática', 'Control de flujo de refrigerante', 210000.00);
+INSERT INTO repuesto (nombre, descripcion, precio, stock) VALUES
+('Válvula de Expansión Termostática', 'Control de flujo de refrigerante', 210000.00, 10);
 
-INSERT INTO repuesto (nombre, descripcion, precio) VALUES
-('Motor Ventilador Condensador 1/3HP', 'Motor de alta eficiencia', 320000.00);
+INSERT INTO repuesto (nombre, descripcion, precio, stock) VALUES
+('Motor Ventilador Condensador 1/3HP', 'Motor de alta eficiencia', 320000.00, 10);
 
 -- 5. Órdenes de Servicio (Asociadas a clientes 2..5, equipos 1..5 y técnicos 1..3)
 INSERT INTO orden_servicio (cliente_id, equipo_id, tecnico_id, numero, fecha_apertura, total, estado) VALUES
@@ -386,14 +392,14 @@ INSERT INTO cotizacion (orden_servicio_id, nombre, descripcion, monto_total, est
 (4, 'Cotización Diagnóstico Electrónico', 'Reparación de tarjeta principal de control', 210000.00, 'RECHAZADA');
 
 -- 9. Pagos
-INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
-('ORDEN_SERVICIO', 1, 'TRANSFERENCIA', 1630000.00, TO_TIMESTAMP('2026-08-02 10:15:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
+INSERT INTO pago (referencia_tipo, referencia_id, orden_servicio_id, metodo, monto, fecha, estado) VALUES
+('ORDEN_SERVICIO', 1, 1, 'TRANSFERENCIA', 1630000.00, TO_TIMESTAMP('2026-08-02 10:15:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
 
-INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
-('ORDEN_SERVICIO', 2, 'EFECTIVO', 445000.00, TO_TIMESTAMP('2026-08-06 16:30:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
+INSERT INTO pago (referencia_tipo, referencia_id, orden_servicio_id, metodo, monto, fecha, estado) VALUES
+('ORDEN_SERVICIO', 2, 2, 'EFECTIVO', 445000.00, TO_TIMESTAMP('2026-08-06 16:30:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
 
-INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
-('COTIZACION', 1, 'TARJETA_CREDITO', 500000.00, TO_TIMESTAMP('2026-08-01 11:00:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
+INSERT INTO pago (referencia_tipo, referencia_id, orden_servicio_id, metodo, monto, fecha, estado) VALUES
+('COTIZACION', 1, 1, 'TARJETA_CREDITO', 500000.00, TO_TIMESTAMP('2026-08-01 11:00:00', 'YYYY-MM-DD HH24:MI:SS'), 'COMPLETADO');
 
 -- 10. Garantías (Asociadas a las órdenes 1 y 2)
 INSERT INTO garantia (orden_servicio_id, nombre, descripcion, fecha_inicio, fecha_fin) VALUES

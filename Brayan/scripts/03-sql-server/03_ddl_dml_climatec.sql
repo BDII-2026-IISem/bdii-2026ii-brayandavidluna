@@ -89,6 +89,7 @@ CREATE TABLE cliente (
     nombre NVARCHAR(150) NOT NULL,
     telefono NVARCHAR(30) NOT NULL,
     email NVARCHAR(150) NOT NULL,
+    address NVARCHAR(255) NULL,
     is_active NVARCHAR(20) DEFAULT 'ACTIVE' CHECK (is_active IN ('ACTIVE', 'INACTIVE')),
     created_at DATETIME2 DEFAULT GETDATE(),
     updated_at DATETIME2 DEFAULT GETDATE()
@@ -152,6 +153,7 @@ CREATE TABLE repuesto (
     nombre NVARCHAR(150) NOT NULL,
     descripcion NVARCHAR(MAX) NULL,
     precio DECIMAL(10,2) NOT NULL,
+    stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
     is_active NVARCHAR(20) DEFAULT 'ACTIVE' CHECK (is_active IN ('ACTIVE', 'INACTIVE')),
     created_at DATETIME2 DEFAULT GETDATE(),
     updated_at DATETIME2 DEFAULT GETDATE()
@@ -190,12 +192,16 @@ CREATE TABLE pago (
     id INT IDENTITY(1,1) PRIMARY KEY,
     referencia_tipo NVARCHAR(50) NOT NULL,
     referencia_id INT NOT NULL,
+    orden_servicio_id INT NULL,
+    registrado_por_id INT NULL,
     metodo NVARCHAR(50) NOT NULL,
     monto DECIMAL(12,2) NOT NULL,
     fecha DATETIME2 NOT NULL,
     estado NVARCHAR(30) DEFAULT 'COMPLETADO' CHECK (estado IN ('COMPLETADO', 'PENDIENTE', 'ANULADO')),
     created_at DATETIME2 DEFAULT GETDATE(),
-    updated_at DATETIME2 DEFAULT GETDATE()
+    updated_at DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT fk_pago_orden FOREIGN KEY (orden_servicio_id) REFERENCES orden_servicio(id),
+    CONSTRAINT fk_pago_usuario FOREIGN KEY (registrado_por_id) REFERENCES users(id)
 );
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'garantia')
@@ -247,13 +253,14 @@ INSERT INTO tecnico (nombre, descripcion) VALUES
 ('Diana Marcela Gómez', 'Supervisora de Mantenimiento Preventivo');
 
 -- 4. Repuestos (IDs generados: 1, 2, 3, 4, 5, 6)
-INSERT INTO repuesto (nombre, descripcion, precio) VALUES
-('Compresor Scroll 5HP', 'Compresor hermético R410A', 1250000.00),
-('Capacitor de Marcha 45uF', 'Capacitor para motor monofásico', 45000.00),
-('Gas Refrigerante R410A (Cilindro 11.3kg)', 'Refrigerante ecológico', 380000.00),
-('Filtro Secador 3/8 Soldable', 'Filtro deshidratador líquido', 65000.00),
-('Válvula de Expansión Termostática', 'Control de flujo de refrigerante', 210000.00),
-('Motor Ventilador Condensador 1/3HP', 'Motor de alta eficiencia', 320000.00);
+-- Existencias restantes después de los consumos de servicio de prueba.
+INSERT INTO repuesto (nombre, descripcion, precio, stock) VALUES
+('Compresor Scroll 5HP', 'Compresor hermético R410A', 1250000.00, 8),
+('Capacitor de Marcha 45uF', 'Capacitor para motor monofásico', 45000.00, 10),
+('Gas Refrigerante R410A (Cilindro 11.3kg)', 'Refrigerante ecológico', 380000.00, 8),
+('Filtro Secador 3/8 Soldable', 'Filtro deshidratador líquido', 65000.00, 9),
+('Válvula de Expansión Termostática', 'Control de flujo de refrigerante', 210000.00, 10),
+('Motor Ventilador Condensador 1/3HP', 'Motor de alta eficiencia', 320000.00, 10);
 
 -- 5. Órdenes de Servicio (Asociadas a clientes 2..5, equipos 1..5 y técnicos 1..3)
 INSERT INTO orden_servicio (cliente_id, equipo_id, tecnico_id, numero, fecha_apertura, total, estado) VALUES
@@ -287,10 +294,10 @@ INSERT INTO cotizacion (orden_servicio_id, nombre, descripcion, monto_total, est
 (4, 'Cotización Diagnóstico Electrónico', 'Reparación de tarjeta principal de control', 210000.00, 'RECHAZADA');
 
 -- 9. Pagos
-INSERT INTO pago (referencia_tipo, referencia_id, metodo, monto, fecha, estado) VALUES
-('ORDEN_SERVICIO', 1, 'TRANSFERENCIA', 1630000.00, '2026-08-02 10:15:00', 'COMPLETADO'),
-('ORDEN_SERVICIO', 2, 'EFECTIVO', 445000.00, '2026-08-06 16:30:00', 'COMPLETADO'),
-('COTIZACION', 1, 'TARJETA_CREDITO', 500000.00, '2026-08-01 11:00:00', 'COMPLETADO');
+INSERT INTO pago (referencia_tipo, referencia_id, orden_servicio_id, metodo, monto, fecha, estado) VALUES
+('ORDEN_SERVICIO', 1, 1, 'TRANSFERENCIA', 1630000.00, '2026-08-02 10:15:00', 'COMPLETADO'),
+('ORDEN_SERVICIO', 2, 2, 'EFECTIVO', 445000.00, '2026-08-06 16:30:00', 'COMPLETADO'),
+('COTIZACION', 1, 1, 'TARJETA_CREDITO', 500000.00, '2026-08-01 11:00:00', 'COMPLETADO');
 
 -- 10. Garantías (Asociadas a las órdenes 1 y 2)
 INSERT INTO garantia (orden_servicio_id, nombre, descripcion, fecha_inicio, fecha_fin) VALUES

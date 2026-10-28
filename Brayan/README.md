@@ -16,6 +16,8 @@ La solución integra un total de **16 tablas**:
 1. **Subsistema Transversal RBAC (6 tablas):** `users`, `roles`, `role_users`, `resources`, `resource_roles`, `refresh_tokens`.
 2. **Dominio de Negocio ClimaTec (10 tablas):** `cliente`, `equipo`, `tecnico`, `orden_servicio`, `diagnostico`, `repuesto`, `consumo_repuesto`, `cotizacion`, `pago`, `garantia`.
 
+Los scripts mantienen las 16 tablas de ClimaTec; no incluyen el catálogo comercial ni las ventas de StoreLab. La tabla `repuesto` incorpora la columna `stock` para controlar existencias: el consumo queda relacionado con cada orden de servicio en `consumo_repuesto`. La tabla `pago` conserva su referencia original y añade relaciones opcionales a la orden de servicio y al usuario que registró el pago, para mostrar al cliente y al operador en el admin. La tabla `cliente` conserva el campo opcional `address`.
+
 El sistema fue desplegado, manipulado e inspeccionado de manera transparente sobre **cuatro motores relacionales** en contenedores de Docker mediante WSL2 (Ubuntu).
 
 ---
@@ -36,23 +38,26 @@ El sistema fue desplegado, manipulado e inspeccionado de manera transparente sob
 ## Estructura del Repositorio
 
 ```text
-Brayan/
-├── evidencias/
-│   ├── 01-mysql/            # Capturas de SPs parametrizados (1-5) + README.md
-│   ├── 02-postgresql/       # Capturas de SPs parametrizados (1-5) + README.md
-│   ├── 03-sql-server/       # Capturas de SPs parametrizados (1-5) + README.md
-│   └── 04-oracle/           # Capturas de SPs parametrizados (1-5) + README.md
-├── scripts/
-│   ├── 01-mysql/            # 01_ddl_dml_climatec.sql, sp_climatec.sql
-│   ├── 02-postgresql/       # 02_ddl_dml_climatec.sql, sp_climatec.sql
-│   ├── 03-sql-server/       # 03_ddl_dml_climatec.sql, sp_climatec.sql
-│   └── 04-oracle/           # 04_ddl_dml_climatec.sql, sp_climatec.sql
-└── README.md                # Guía y presentación principal del proyecto
-Guia Paso a Paso del Procedimiento Realizado
-Paso 1: Estructuración del Repositorio Local en Ubuntu
+basededatos2/
+├── Backend-2026/
+│   └── Django/              # API REST de ClimaTec y sus aplicaciones
+├── Frontend-2026/           # Interfaz del proyecto
+├── Brayan/
+│   ├── evidencias/          # Capturas por motor de base de datos
+│   ├── scripts/             # DDL, DML y procedimientos por motor
+│   ├── proceso.md           # Guía del trabajo de bases de datos
+│   └── README.md            # Presentación y guía principal del proyecto
+└── proceso1.md              # Documentación complementaria del despliegue
+
+```
+
+## Guía paso a paso del procedimiento realizado
+
+### Paso 1: Estructuración del repositorio local en Ubuntu
+
 Desde la terminal de Ubuntu en WSL2, se ingresó al directorio raíz del proyecto y se creó la jerarquía modular de directorios para los scripts SQL y las evidencias visuales:
 
-Bash
+```bash
 cd /home/brayan/ia-lab/projecs/basededatos2/Brayan
 
 # Creación de carpetas para scripts DDL/DML por motor
@@ -61,7 +66,10 @@ mkdir -p scripts/01-mysql/consultas scripts/02-postgresql/consultas scripts/03-s
 
 # Creación de carpetas para las imágenes de evidencia
 mkdir -p evidencias/01-mysql evidencias/02-postgresql evidencias/03-sql-server evidencias/04-oracle
-Paso 2: Aprovisionamiento y Ejecución por Motor
+```
+
+### Paso 2: Aprovisionamiento y ejecución por motor
+
 1. Motor 1: MySQL 8.0 (01-mysql)
 Configuración de Permisos en el Contenedor: Se asignaron privilegios globales al usuario local.
 

@@ -16,6 +16,8 @@ La solución integra un total de **16 tablas**:
 1. **Subsistema Transversal RBAC (6 tablas):** `users`, `roles`, `role_users`, `resources`, `resource_roles`, `refresh_tokens`.
 2. **Dominio de Negocio ClimaTec (10 tablas):** `cliente`, `equipo`, `tecnico`, `orden_servicio`, `diagnostico`, `repuesto`, `consumo_repuesto`, `cotizacion`, `pago`, `garantia`.
 
+Los scripts mantienen las 16 tablas de ClimaTec; no incluyen el catálogo comercial ni las ventas de StoreLab. La tabla `repuesto` incorpora la columna `stock` para controlar existencias: el consumo queda relacionado con cada orden de servicio en `consumo_repuesto`. La tabla `pago` conserva su referencia original y añade relaciones opcionales a la orden de servicio y al usuario que registró el pago, para mostrar al cliente y al operador en el admin. La tabla `cliente` conserva el campo opcional `address`.
+
 El sistema fue desplegado y verificado de manera transparente sobre **cuatro motores relacionales** en contenedores de Docker mediante WSL2 (Ubuntu).
 
 ---
@@ -101,7 +103,7 @@ docker inspect mssql-server | grep -i "SA_PASSWORD"
 **Solución al Contexto de Base de Datos:**
 
 - Inicialmente se conectó DBeaver a la base de datos `master`.
-- Se ejecutó el script T-SQL `scripts/03-sql-server/03_ddl_dml_climatec.sql` que crea automáticamente la base de datos `bd_clima_tec` y sus 16 tablas.
+- Se ejecutó el script T-SQL `scripts/03-sql-server/03_ddl_dml_climatec.sql` que crea la base `bd_clima_tec` y las 16 tablas de ClimaTec.
 
 **Manejo de Autoincrementables (IDENTITY):**
 Al probar la inserción manual GUI sobre la tabla `cliente`, se dejó la celda del campo `id` completamente vacía en DBeaver para no violar la restricción de inserción explícita de SQL Server. Se confirmó el cambio con `Ctrl + S`.
