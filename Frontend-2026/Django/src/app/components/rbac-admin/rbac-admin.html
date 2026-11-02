@@ -1,0 +1,731 @@
+<main class="space-y-6">
+  <header>
+    <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600">ClimaTec</p>
+    <h1 class="mt-1 text-2xl font-bold text-slate-900">Administración RBAC</h1>
+    <p class="mt-1 text-slate-600">
+      Administra usuarios, roles, recursos y sus asignaciones de permisos.
+    </p>
+  </header>
+
+  @if (errorMessage()) {
+    <div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+      {{ errorMessage() }}
+    </div>
+  }
+  @if (successMessage()) {
+    <div
+      role="status"
+      class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+    >
+      {{ successMessage() }}
+    </div>
+  }
+
+  <nav class="flex flex-wrap gap-2" aria-label="Secciones de administración RBAC">
+    <button
+      type="button"
+      class="rounded-lg px-4 py-2 text-sm font-medium"
+      [class.bg-indigo-600]="activeSection() === 'users'"
+      [class.text-white]="activeSection() === 'users'"
+      [class.bg-white]="activeSection() !== 'users'"
+      [class.text-slate-700]="activeSection() !== 'users'"
+      (click)="selectSection('users')"
+    >
+      Usuarios
+    </button>
+    <button
+      type="button"
+      class="rounded-lg px-4 py-2 text-sm font-medium"
+      [class.bg-indigo-600]="activeSection() === 'roles'"
+      [class.text-white]="activeSection() === 'roles'"
+      [class.bg-white]="activeSection() !== 'roles'"
+      [class.text-slate-700]="activeSection() !== 'roles'"
+      (click)="selectSection('roles')"
+    >
+      Roles
+    </button>
+    <button
+      type="button"
+      class="rounded-lg px-4 py-2 text-sm font-medium"
+      [class.bg-indigo-600]="activeSection() === 'resources'"
+      [class.text-white]="activeSection() === 'resources'"
+      [class.bg-white]="activeSection() !== 'resources'"
+      [class.text-slate-700]="activeSection() !== 'resources'"
+      (click)="selectSection('resources')"
+    >
+      Recursos
+    </button>
+    <button
+      type="button"
+      class="rounded-lg px-4 py-2 text-sm font-medium"
+      [class.bg-indigo-600]="activeSection() === 'role-users'"
+      [class.text-white]="activeSection() === 'role-users'"
+      [class.bg-white]="activeSection() !== 'role-users'"
+      [class.text-slate-700]="activeSection() !== 'role-users'"
+      (click)="selectSection('role-users')"
+    >
+      Asignaciones usuario-rol
+    </button>
+    <button
+      type="button"
+      class="rounded-lg px-4 py-2 text-sm font-medium"
+      [class.bg-indigo-600]="activeSection() === 'resource-roles'"
+      [class.text-white]="activeSection() === 'resource-roles'"
+      [class.bg-white]="activeSection() !== 'resource-roles'"
+      [class.text-slate-700]="activeSection() !== 'resource-roles'"
+      (click)="selectSection('resource-roles')"
+    >
+      Concesiones rol-recurso
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <p-card header="Cargando" styleClass="shadow-sm">
+      <p class="text-sm text-slate-600">Consultando la matriz RBAC del servidor.</p>
+    </p-card>
+  } @else {
+    @switch (activeSection()) {
+      @case ('users') {
+        <p-card
+          header="Usuarios"
+          subheader="Cuentas habilitadas en ClimaTec"
+          styleClass="shadow-sm"
+        >
+          <div class="mb-4 flex justify-end">
+            <p-button label="Nuevo usuario" icon="pi pi-plus" (onClick)="openCreateForm()" />
+          </div>
+          @if (formVisible()) {
+            <form
+              class="mb-5 grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2"
+              (ngSubmit)="saveCurrent()"
+            >
+              <label class="text-sm font-medium text-slate-700">
+                Usuario
+                <input
+                  name="username"
+                  [(ngModel)]="userForm.username"
+                  required
+                  maxlength="150"
+                  autocomplete="off"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </label>
+              <label class="text-sm font-medium text-slate-700">
+                Correo
+                <input
+                  name="email"
+                  type="email"
+                  [(ngModel)]="userForm.email"
+                  required
+                  maxlength="254"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </label>
+              <label class="text-sm font-medium text-slate-700">
+                Nombre
+                <input
+                  name="firstName"
+                  [(ngModel)]="userForm.firstName"
+                  maxlength="150"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </label>
+              <label class="text-sm font-medium text-slate-700">
+                Apellido
+                <input
+                  name="lastName"
+                  [(ngModel)]="userForm.lastName"
+                  maxlength="150"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </label>
+              @if (editingId() === null) {
+                <label class="text-sm font-medium text-slate-700">
+                  Contraseña inicial
+                  <input
+                    name="password"
+                    type="password"
+                    [(ngModel)]="userForm.password"
+                    required
+                    minlength="8"
+                    autocomplete="new-password"
+                    class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                </label>
+              }
+              <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input name="isActive" type="checkbox" [(ngModel)]="userForm.isActive" />
+                Cuenta activa
+              </label>
+              <div class="flex justify-end gap-2 sm:col-span-2">
+                <p-button
+                  label="Cancelar"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="closeForm()"
+                />
+                <p-button label="Guardar" icon="pi pi-check" type="submit" [loading]="saving()" />
+              </div>
+            </form>
+          }
+          <div class="overflow-x-auto">
+            <p-table
+              [value]="users()"
+              [paginator]="true"
+              [rows]="10"
+              styleClass="p-datatable-gridlines"
+            >
+              <ng-template #header
+                ><tr>
+                  <th>Usuario</th>
+                  <th>Correo</th>
+                  <th>Nombre</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr></ng-template
+              >
+              <ng-template #body let-user>
+                <tr>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>{{ user.firstName }} {{ user.lastName }}</td>
+                  <td>{{ user.isActive ? 'Activo' : 'Inactivo' }}</td>
+                  <td class="whitespace-nowrap">
+                    <p-button
+                      label="Editar"
+                      severity="secondary"
+                      [outlined]="true"
+                      size="small"
+                      (onClick)="openUserEditForm(user)"
+                    />
+                    @if (pendingDeleteKey() === 'users:' + user.id) {
+                      <p-button
+                        label="Confirmar"
+                        severity="danger"
+                        size="small"
+                        [loading]="deleting()"
+                        (onClick)="deleteCurrent(user.id, 'users:' + user.id)"
+                      />
+                      <p-button
+                        label="Cancelar"
+                        severity="secondary"
+                        [text]="true"
+                        size="small"
+                        (onClick)="requestDelete('')"
+                      />
+                    } @else {
+                      <p-button
+                        label="Eliminar"
+                        severity="danger"
+                        [outlined]="true"
+                        size="small"
+                        (onClick)="requestDelete('users:' + user.id)"
+                      />
+                    }
+                  </td>
+                </tr>
+              </ng-template>
+              <ng-template #emptymessage
+                ><tr>
+                  <td colspan="5" class="p-4 text-center text-slate-500">
+                    No hay usuarios registrados.
+                  </td>
+                </tr></ng-template
+              >
+            </p-table>
+          </div>
+
+          <section
+            class="mt-6 border-t border-slate-200 pt-5"
+            aria-labelledby="effective-permissions-title"
+          >
+            <h2 id="effective-permissions-title" class="font-semibold text-slate-900">
+              Permisos efectivos por usuario
+            </h2>
+            <label class="mt-3 block max-w-md text-sm font-medium text-slate-700">
+              Seleccionar usuario
+              <select
+                [ngModel]="selectedPermissionUserId()"
+                (ngModelChange)="loadEffectivePermissions($event)"
+                name="permissionUser"
+                class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+              >
+                <option [ngValue]="null">Selecciona un usuario</option>
+                @for (user of users(); track user.id) {
+                  <option [ngValue]="user.id">{{ user.username }}</option>
+                }
+              </select>
+            </label>
+            @if (selectedPermissionUserId() !== null) {
+              <div class="mt-4 overflow-x-auto">
+                <p-table [value]="effectivePermissions()" styleClass="p-datatable-gridlines">
+                  <ng-template #header
+                    ><tr>
+                      <th>Método</th>
+                      <th>Ruta</th>
+                      <th>Rol concedente</th>
+                    </tr></ng-template
+                  >
+                  <ng-template #body let-permission
+                    ><tr>
+                      <td>{{ permission.method }}</td>
+                      <td class="font-mono text-xs">{{ permission.path }}</td>
+                      <td>{{ permission.roleName }}</td>
+                    </tr></ng-template
+                  >
+                  <ng-template #emptymessage
+                    ><tr>
+                      <td colspan="3" class="p-4 text-center text-slate-500">
+                        El usuario no tiene permisos efectivos.
+                      </td>
+                    </tr></ng-template
+                  >
+                </p-table>
+              </div>
+            }
+          </section>
+        </p-card>
+      }
+
+      @case ('roles') {
+        <p-card header="Roles" subheader="Perfiles de autorización" styleClass="shadow-sm">
+          <div class="mb-4 flex justify-end">
+            <p-button label="Nuevo rol" icon="pi pi-plus" (onClick)="openCreateForm()" />
+          </div>
+          @if (formVisible()) {
+            <form
+              class="mb-5 grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2"
+              (ngSubmit)="saveCurrent()"
+            >
+              <label class="text-sm font-medium text-slate-700"
+                >Nombre<input
+                  name="roleName"
+                  [(ngModel)]="roleForm.name"
+                  required
+                  maxlength="50"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+              /></label>
+              <label class="text-sm font-medium text-slate-700"
+                >Descripción<input
+                  name="roleDescription"
+                  [(ngModel)]="roleForm.description"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+              /></label>
+              <div class="flex justify-end gap-2 sm:col-span-2">
+                <p-button
+                  label="Cancelar"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="closeForm()"
+                /><p-button label="Guardar" icon="pi pi-check" type="submit" [loading]="saving()" />
+              </div>
+            </form>
+          }
+          <p-table
+            [value]="roles()"
+            [paginator]="true"
+            [rows]="10"
+            styleClass="p-datatable-gridlines"
+          >
+            <ng-template #header
+              ><tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+              </tr></ng-template
+            >
+            <ng-template #body let-role
+              ><tr>
+                <td>{{ role.id }}</td>
+                <td>{{ role.name }}</td>
+                <td>{{ role.description || 'N/D' }}</td>
+                <td class="whitespace-nowrap">
+                  <p-button
+                    label="Editar"
+                    severity="secondary"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="openRoleEditForm(role)"
+                  />
+                  @if (pendingDeleteKey() === 'roles:' + role.id) {
+                    <p-button
+                      label="Confirmar"
+                      severity="danger"
+                      size="small"
+                      [loading]="deleting()"
+                      (onClick)="deleteCurrent(role.id, 'roles:' + role.id)"
+                    /><p-button
+                      label="Cancelar"
+                      severity="secondary"
+                      [text]="true"
+                      size="small"
+                      (onClick)="requestDelete('')"
+                    />
+                  } @else {
+                    <p-button
+                      label="Eliminar"
+                      severity="danger"
+                      [outlined]="true"
+                      size="small"
+                      (onClick)="requestDelete('roles:' + role.id)"
+                    />
+                  }
+                </td></tr
+            ></ng-template>
+            <ng-template #emptymessage
+              ><tr>
+                <td colspan="4" class="p-4 text-center text-slate-500">
+                  No hay roles registrados.
+                </td>
+              </tr></ng-template
+            >
+          </p-table>
+        </p-card>
+      }
+
+      @case ('resources') {
+        <p-card
+          header="Recursos"
+          subheader="Rutas y métodos protegidos por RBAC"
+          styleClass="shadow-sm"
+        >
+          <div class="mb-4 flex justify-end">
+            <p-button label="Nuevo recurso" icon="pi pi-plus" (onClick)="openCreateForm()" />
+          </div>
+          @if (formVisible()) {
+            <form
+              class="mb-5 grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-3"
+              (ngSubmit)="saveCurrent()"
+            >
+              <label class="text-sm font-medium text-slate-700"
+                >Ruta<input
+                  name="resourcePath"
+                  [(ngModel)]="resourceForm.path"
+                  required
+                  maxlength="255"
+                  placeholder="/api/v1/clients/"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm"
+              /></label>
+              <label class="text-sm font-medium text-slate-700"
+                >Método<select
+                  name="resourceMethod"
+                  [(ngModel)]="resourceForm.method"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                >
+                  @for (method of resourceMethods; track method) {
+                    <option [ngValue]="method">{{ method }}</option>
+                  }
+                </select></label
+              >
+              <label class="text-sm font-medium text-slate-700"
+                >Descripción<input
+                  name="resourceDescription"
+                  [(ngModel)]="resourceForm.description"
+                  class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+              /></label>
+              <div class="flex justify-end gap-2 sm:col-span-3">
+                <p-button
+                  label="Cancelar"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="closeForm()"
+                /><p-button label="Guardar" icon="pi pi-check" type="submit" [loading]="saving()" />
+              </div>
+            </form>
+          }
+          <p-table
+            [value]="resources()"
+            [paginator]="true"
+            [rows]="10"
+            styleClass="p-datatable-gridlines"
+          >
+            <ng-template #header
+              ><tr>
+                <th>ID</th>
+                <th>Método</th>
+                <th>Ruta</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+              </tr></ng-template
+            >
+            <ng-template #body let-resource
+              ><tr>
+                <td>{{ resource.id }}</td>
+                <td>{{ resource.method }}</td>
+                <td class="font-mono text-xs">{{ resource.path }}</td>
+                <td>{{ resource.description || 'N/D' }}</td>
+                <td class="whitespace-nowrap">
+                  <p-button
+                    label="Editar"
+                    severity="secondary"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="openResourceEditForm(resource)"
+                  />
+                  @if (pendingDeleteKey() === 'resources:' + resource.id) {
+                    <p-button
+                      label="Confirmar"
+                      severity="danger"
+                      size="small"
+                      [loading]="deleting()"
+                      (onClick)="deleteCurrent(resource.id, 'resources:' + resource.id)"
+                    /><p-button
+                      label="Cancelar"
+                      severity="secondary"
+                      [text]="true"
+                      size="small"
+                      (onClick)="requestDelete('')"
+                    />
+                  } @else {
+                    <p-button
+                      label="Eliminar"
+                      severity="danger"
+                      [outlined]="true"
+                      size="small"
+                      (onClick)="requestDelete('resources:' + resource.id)"
+                    />
+                  }
+                </td></tr
+            ></ng-template>
+            <ng-template #emptymessage
+              ><tr>
+                <td colspan="5" class="p-4 text-center text-slate-500">
+                  No hay recursos registrados.
+                </td>
+              </tr></ng-template
+            >
+          </p-table>
+        </p-card>
+      }
+
+      @case ('role-users') {
+        <p-card
+          header="Asignaciones usuario-rol"
+          subheader="Roles asociados a cada cuenta"
+          styleClass="shadow-sm"
+        >
+          <div class="mb-4 flex justify-end">
+            <p-button label="Asignar rol" icon="pi pi-plus" (onClick)="openCreateForm()" />
+          </div>
+          @if (formVisible()) {
+            <form
+              class="mb-5 grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2"
+              (ngSubmit)="saveCurrent()"
+            >
+              <label class="text-sm font-medium text-slate-700"
+                >Usuario<select
+                  name="assignmentUser"
+                  [(ngModel)]="roleUserForm.user"
+                  required
+                  class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                >
+                  <option [ngValue]="0" disabled>Selecciona un usuario</option>
+                  @for (user of users(); track user.id) {
+                    <option [ngValue]="user.id">{{ user.username }}</option>
+                  }
+                </select></label
+              >
+              <label class="text-sm font-medium text-slate-700"
+                >Rol<select
+                  name="assignmentRole"
+                  [(ngModel)]="roleUserForm.role"
+                  required
+                  class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                >
+                  <option [ngValue]="0" disabled>Selecciona un rol</option>
+                  @for (role of roles(); track role.id) {
+                    <option [ngValue]="role.id">{{ role.name }}</option>
+                  }
+                </select></label
+              >
+              <div class="flex justify-end gap-2 sm:col-span-2">
+                <p-button
+                  label="Cancelar"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="closeForm()"
+                /><p-button label="Guardar" icon="pi pi-check" type="submit" [loading]="saving()" />
+              </div>
+            </form>
+          }
+          <p-table
+            [value]="roleUserAssignments()"
+            [paginator]="true"
+            [rows]="10"
+            styleClass="p-datatable-gridlines"
+          >
+            <ng-template #header
+              ><tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Acciones</th>
+              </tr></ng-template
+            >
+            <ng-template #body let-assignment
+              ><tr>
+                <td>{{ assignment.id }}</td>
+                <td>{{ username(assignment.user) }}</td>
+                <td>{{ roleName(assignment.role) }}</td>
+                <td class="whitespace-nowrap">
+                  <p-button
+                    label="Editar"
+                    severity="secondary"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="openRoleUserEditForm(assignment)"
+                  />
+                  @if (pendingDeleteKey() === 'role-users:' + assignment.id) {
+                    <p-button
+                      label="Confirmar"
+                      severity="danger"
+                      size="small"
+                      [loading]="deleting()"
+                      (onClick)="deleteCurrent(assignment.id, 'role-users:' + assignment.id)"
+                    /><p-button
+                      label="Cancelar"
+                      severity="secondary"
+                      [text]="true"
+                      size="small"
+                      (onClick)="requestDelete('')"
+                    />
+                  } @else {
+                    <p-button
+                      label="Eliminar"
+                      severity="danger"
+                      [outlined]="true"
+                      size="small"
+                      (onClick)="requestDelete('role-users:' + assignment.id)"
+                    />
+                  }
+                </td></tr
+            ></ng-template>
+            <ng-template #emptymessage
+              ><tr>
+                <td colspan="4" class="p-4 text-center text-slate-500">
+                  No hay asignaciones registradas.
+                </td>
+              </tr></ng-template
+            >
+          </p-table>
+        </p-card>
+      }
+
+      @case ('resource-roles') {
+        <p-card
+          header="Concesiones rol-recurso"
+          subheader="Permisos concedidos por rol"
+          styleClass="shadow-sm"
+        >
+          <div class="mb-4 flex justify-end">
+            <p-button label="Conceder recurso" icon="pi pi-plus" (onClick)="openCreateForm()" />
+          </div>
+          @if (formVisible()) {
+            <form
+              class="mb-5 grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2"
+              (ngSubmit)="saveCurrent()"
+            >
+              <label class="text-sm font-medium text-slate-700"
+                >Recurso<select
+                  name="grantResource"
+                  [(ngModel)]="resourceRoleForm.resource"
+                  required
+                  class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                >
+                  <option [ngValue]="0" disabled>Selecciona un recurso</option>
+                  @for (resource of resources(); track resource.id) {
+                    <option [ngValue]="resource.id">
+                      {{ resource.method }} {{ resource.path }}
+                    </option>
+                  }
+                </select></label
+              >
+              <label class="text-sm font-medium text-slate-700"
+                >Rol<select
+                  name="grantRole"
+                  [(ngModel)]="resourceRoleForm.role"
+                  required
+                  class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                >
+                  <option [ngValue]="0" disabled>Selecciona un rol</option>
+                  @for (role of roles(); track role.id) {
+                    <option [ngValue]="role.id">{{ role.name }}</option>
+                  }
+                </select></label
+              >
+              <div class="flex justify-end gap-2 sm:col-span-2">
+                <p-button
+                  label="Cancelar"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="closeForm()"
+                /><p-button label="Guardar" icon="pi pi-check" type="submit" [loading]="saving()" />
+              </div>
+            </form>
+          }
+          <p-table
+            [value]="resourceRoleGrants()"
+            [paginator]="true"
+            [rows]="10"
+            styleClass="p-datatable-gridlines"
+          >
+            <ng-template #header
+              ><tr>
+                <th>ID</th>
+                <th>Recurso</th>
+                <th>Rol</th>
+                <th>Acciones</th>
+              </tr></ng-template
+            >
+            <ng-template #body let-grant
+              ><tr>
+                <td>{{ grant.id }}</td>
+                <td class="font-mono text-xs">{{ resourceLabel(grant.resource) }}</td>
+                <td>{{ roleName(grant.role) }}</td>
+                <td class="whitespace-nowrap">
+                  <p-button
+                    label="Editar"
+                    severity="secondary"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="openResourceRoleEditForm(grant)"
+                  />
+                  @if (pendingDeleteKey() === 'resource-roles:' + grant.id) {
+                    <p-button
+                      label="Confirmar"
+                      severity="danger"
+                      size="small"
+                      [loading]="deleting()"
+                      (onClick)="deleteCurrent(grant.id, 'resource-roles:' + grant.id)"
+                    /><p-button
+                      label="Cancelar"
+                      severity="secondary"
+                      [text]="true"
+                      size="small"
+                      (onClick)="requestDelete('')"
+                    />
+                  } @else {
+                    <p-button
+                      label="Eliminar"
+                      severity="danger"
+                      [outlined]="true"
+                      size="small"
+                      (onClick)="requestDelete('resource-roles:' + grant.id)"
+                    />
+                  }
+                </td></tr
+            ></ng-template>
+            <ng-template #emptymessage
+              ><tr>
+                <td colspan="4" class="p-4 text-center text-slate-500">
+                  No hay concesiones registradas.
+                </td>
+              </tr></ng-template
+            >
+          </p-table>
+        </p-card>
+      }
+    }
+  }
+</main>

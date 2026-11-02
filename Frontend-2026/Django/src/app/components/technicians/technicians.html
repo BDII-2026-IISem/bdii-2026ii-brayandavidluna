@@ -1,0 +1,206 @@
+<main class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600">
+        ClimaTec
+      </p>
+      <h1 class="mt-1 text-2xl font-bold text-slate-900">Técnicos</h1>
+      <p class="mt-1 text-slate-600">
+        Consulta y administra el equipo de servicio técnico.
+      </p>
+    </div>
+
+    @if (canManageTechnicians) {
+      <p-button
+        label="Nuevo técnico"
+        icon="pi pi-plus"
+        (onClick)="openCreateForm()"
+      />
+    }
+  </div>
+
+  @if (errorMessage()) {
+    <div
+      role="alert"
+      class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+    >
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div
+      role="status"
+      class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+    >
+      {{ successMessage() }}
+    </div>
+  }
+
+  @if (canManageTechnicians && formVisible()) {
+    <section
+      class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+      aria-labelledby="technician-form-title"
+    >
+      <h2 id="technician-form-title" class="text-lg font-semibold text-slate-900">
+        {{ editingTechnicianId() === null ? 'Registrar técnico' : 'Editar técnico' }}
+      </h2>
+      <form class="mt-4 space-y-4" (ngSubmit)="saveTechnician()">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="block text-sm font-medium text-slate-700" for="technicianName">
+            Nombre
+            <input
+              id="technicianName"
+              name="name"
+              [(ngModel)]="technicianForm.name"
+              required
+              maxlength="150"
+              autocomplete="name"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label
+            class="block text-sm font-medium text-slate-700"
+            for="technicianDescription"
+          >
+            Descripción
+            <input
+              id="technicianDescription"
+              name="description"
+              [(ngModel)]="technicianForm.description"
+              maxlength="255"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label
+            class="block text-sm font-medium text-slate-700"
+            for="technicianStatus"
+          >
+            Estado
+            <select
+              id="technicianStatus"
+              name="status"
+              [(ngModel)]="technicianForm.status"
+              required
+              class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              @for (status of activeStatuses; track status.value) {
+                <option [value]="status.value">{{ status.label }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            [disabled]="saving()"
+            (click)="closeForm()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            [disabled]="saving()"
+          >
+            {{ saving() ? 'Guardando…' : 'Guardar técnico' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <p-card
+    header="Directorio de técnicos"
+    subheader="Información sincronizada con el backend ClimaTec"
+    styleClass="shadow-sm"
+  >
+    <div class="overflow-x-auto">
+      <p-table
+        [value]="technicians()"
+        [loading]="loading()"
+        [paginator]="true"
+        [rows]="10"
+        styleClass="p-datatable-gridlines"
+      >
+        <ng-template #header>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Estado</th>
+            @if (canManageTechnicians) {
+              <th>Acciones</th>
+            }
+          </tr>
+        </ng-template>
+        <ng-template #body let-technician>
+          <tr>
+            <td>{{ technician.id }}</td>
+            <td>{{ technician.name }}</td>
+            <td>{{ technician.description || 'N/D' }}</td>
+            <td>
+              <span
+                class="rounded-full px-2 py-1 text-xs font-semibold"
+                [class.bg-emerald-100]="technician.status === 'ACTIVE'"
+                [class.text-emerald-800]="technician.status === 'ACTIVE'"
+                [class.bg-slate-100]="technician.status === 'INACTIVE'"
+                [class.text-slate-700]="technician.status === 'INACTIVE'"
+              >
+                {{ technician.status === 'ACTIVE' ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            @if (canManageTechnicians) {
+              <td class="whitespace-nowrap">
+                <p-button
+                  label="Editar"
+                  severity="secondary"
+                  [outlined]="true"
+                  size="small"
+                  (onClick)="openEditForm(technician)"
+                />
+                @if (pendingDeleteTechnicianId() === technician.id) {
+                  <p-button
+                    label="Confirmar"
+                    severity="danger"
+                    size="small"
+                    [loading]="deleting()"
+                    [disabled]="deleting()"
+                    (onClick)="deleteTechnician(technician)"
+                  />
+                  <p-button
+                    label="Cancelar"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    [disabled]="deleting()"
+                    (onClick)="cancelDelete()"
+                  />
+                } @else {
+                  <p-button
+                    label="Eliminar"
+                    severity="danger"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="requestDelete(technician)"
+                  />
+                }
+              </td>
+            }
+          </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+          <tr>
+            <td [attr.colspan]="canManageTechnicians ? 5 : 4" class="p-4 text-center text-slate-500">
+              No se encontraron técnicos registrados.
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </p-card>
+</main>

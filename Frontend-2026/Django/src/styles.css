@@ -1,0 +1,21 @@
+@layer theme, base, primeng, utilities;
+@import "tailwindcss";
+@import "primeicons/primeicons.css";
+
+.climatec-shell-menu .p-menu-list {
+  @apply gap-1;
+}
+
+.climatec-shell-menu .climatec-shell-menu-link {
+  @apply rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition;
+  background-color: transparent;
+}
+
+.climatec-shell-menu
+  .climatec-shell-menu-link:not(.p-disabled):hover:not(.p-menu-item-link-active) {
+  @apply bg-slate-800 text-white;
+}
+
+.climatec-shell-menu .climatec-shell-menu-link.p-menu-item-link-active {
+  @apply bg-indigo-600 text-white shadow-sm;
+}

@@ -222,6 +222,27 @@ class SeedRBACCommandTests(APITestCase):
                 role=client_role,
             ).exists()
         )
+        self.assertTrue(
+            ResourceRole.objects.filter(
+                resource__path="/api/v1/auth/permissions/",
+                resource__method="GET",
+                role=client_role,
+            ).exists()
+        )
+        self.assertTrue(
+            ResourceRole.objects.filter(
+                resource__path="/api/v1/users/",
+                resource__method="GET",
+                role=admin_role,
+            ).exists()
+        )
+        self.assertTrue(
+            ResourceRole.objects.filter(
+                resource__path="/api/v1/users/<int:pk>/permissions/",
+                resource__method="GET",
+                role=admin_role,
+            ).exists()
+        )
         client_read_only_collections = (
             "clients",
             "equipment",
@@ -381,6 +402,30 @@ class AuthenticationFlowTests(APITestCase):
         self.assertIn("lastName", profile_payload)
         self.assertIn("createdAt", profile_payload)
 
+    def test_effective_permissions_are_returned_for_the_authenticated_user(self):
+        call_command("seed_rbac", username=self.user.username)
+        tokens = self.login()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
+
+        response = self.client.get("/api/v1/auth/permissions/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data["permissions"], list)
+        self.assertTrue(
+            any(
+                permission["method"] == "GET"
+                and permission["path"] == "/api/v1/clients/"
+                and permission["roleName"] == "ADMIN"
+                for permission in response.data["permissions"]
+            )
+        )
+        self.assertTrue(
+            any(
+                permission["roleId"] == Role.objects.get(name="ADMIN").id
+                for permission in response.data["permissions"]
+            )
+        )
+
     def test_refresh_rotates_and_blacklists_previous_refresh_token(self):
         tokens = self.login()
 
@@ -430,6 +475,120 @@ class AuthenticationFlowTests(APITestCase):
                     response.json(),
                     {"detail": "Token inválido o no proporcionado."},
                 )
+
+
+class UserAdministrationAPITests(APITestCase):
+    def setUp(self):
+        self.admin = get_user_model().objects.create_user(
+            username="rbac-admin",
+            email="rbac-admin@example.com",
+            password="admin-test-password-123",
+        )
+        call_command("seed_rbac", username=self.admin.username)
+        token = AccessToken.for_user(self.admin)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+    def test_admin_creates_user_with_hashed_password_and_safe_response(self):
+        response = self.client.post(
+            "/api/v1/users/",
+            {
+                "username": "new-client",
+                "email": "new-client@example.com",
+                "firstName": "New",
+                "lastName": "Client",
+                "isActive": True,
+                "password": "secure-password-123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("password", response.data)
+        self.assertNotIn("isStaff", response.data)
+        created_user = get_user_model().objects.get(username="new-client")
+        self.assertTrue(created_user.check_password("secure-password-123"))
+        self.assertFalse(created_user.is_staff)
+        self.assertFalse(created_user.is_superuser)
+
+    def test_password_is_required_on_create_and_rejected_on_update(self):
+        missing_password = self.client.post(
+            "/api/v1/users/",
+            {"username": "without-password", "email": "without@example.com"},
+            format="json",
+        )
+        created_user = get_user_model().objects.create_user(
+            username="editable-client",
+            email="editable@example.com",
+            password="client-password-123",
+        )
+        password_update = self.client.patch(
+            f"/api/v1/users/{created_user.pk}/",
+            {"password": "replacement-password-123"},
+            format="json",
+        )
+
+        self.assertEqual(missing_password.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", missing_password.data)
+        self.assertEqual(password_update.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(created_user.check_password("client-password-123"))
+
+    def test_admin_cannot_delete_or_deactivate_the_current_account(self):
+        delete_response = self.client.delete(f"/api/v1/users/{self.admin.pk}/")
+        deactivate_response = self.client.patch(
+            f"/api/v1/users/{self.admin.pk}/",
+            {"isActive": False},
+            format="json",
+        )
+
+        self.assertEqual(delete_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            deactivate_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_active)
+
+    def test_admin_reads_effective_permissions_for_any_user(self):
+        target = get_user_model().objects.create_user(
+            username="permission-target",
+            email="permission-target@example.com",
+            password="client-password-123",
+        )
+        target_client_role = Role.objects.get(name="CLIENT")
+        RoleUser.objects.create(user=target, role=target_client_role)
+
+        response = self.client.get(f"/api/v1/users/{target.pk}/permissions/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            any(
+                permission["method"] == "GET"
+                and permission["path"] == "/api/v1/clients/"
+                and permission["roleName"] == "CLIENT"
+                for permission in response.data["permissions"]
+            )
+        )
+        self.assertFalse(
+            any(
+                permission["method"] == "POST"
+                and permission["path"] == "/api/v1/clients/"
+                for permission in response.data["permissions"]
+            )
+        )
+
+    def test_client_cannot_access_user_administration(self):
+        target = get_user_model().objects.create_user(
+            username="read-only-client",
+            email="read-only@example.com",
+            password="client-password-123",
+        )
+        RoleUser.objects.create(user=target, role=Role.objects.get(name="CLIENT"))
+        token = AccessToken.for_user(target)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        response = self.client.get("/api/v1/users/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class ResourceAccessResponseTests(APITestCase):

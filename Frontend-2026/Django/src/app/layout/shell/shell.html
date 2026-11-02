@@ -1,0 +1,93 @@
+<div class="flex min-h-screen flex-col bg-slate-100 text-slate-800">
+  <header
+    class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm sm:px-6"
+  >
+    <div class="flex items-center gap-3">
+      <button
+        type="button"
+        class="inline-flex size-10 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-indigo-600 lg:hidden"
+        aria-label="Abrir menú de navegación"
+        [attr.aria-expanded]="menuOpen()"
+        (click)="menuOpen.set(!menuOpen())"
+      >
+        <i class="pi pi-bars text-lg" aria-hidden="true"></i>
+      </button>
+      <a
+        routerLink="/"
+        class="flex items-center gap-2 font-semibold text-slate-900"
+        aria-label="ClimaTec, ir al inicio"
+      >
+        <span
+          class="flex size-9 items-center justify-center rounded-xl bg-indigo-600 text-white"
+        >
+          <i class="pi pi-bolt" aria-hidden="true"></i>
+        </span>
+        <span class="text-lg tracking-tight">ClimaTec</span>
+      </a>
+    </div>
+
+    <div class="flex items-center gap-3">
+      @if (authService.currentUser(); as user) {
+        <div class="hidden text-right sm:block">
+          <p class="text-sm font-medium text-slate-800">{{ user.username }}</p>
+          <p class="text-xs text-slate-500">{{ user.roles.join(', ') }}</p>
+        </div>
+      }
+      <p-button
+        label="Cerrar sesión"
+        icon="pi pi-sign-out"
+        severity="secondary"
+        [text]="true"
+        [loading]="loggingOut()"
+        [disabled]="loggingOut()"
+        (onClick)="onLogout()"
+      />
+    </div>
+  </header>
+
+  <div class="relative flex flex-1">
+    @if (menuOpen()) {
+      <button
+        type="button"
+        class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden"
+        aria-label="Cerrar menú de navegación"
+        (click)="closeMenu()"
+      ></button>
+    }
+
+    <aside
+      class="fixed inset-y-16 left-0 z-40 w-72 -translate-x-full border-r border-slate-800 bg-slate-900 px-3 py-5 text-slate-100 transition-transform duration-200 lg:static lg:z-auto lg:w-64 lg:translate-x-0"
+      [class.translate-x-0]="menuOpen()"
+    >
+      <p
+        class="px-3 pb-3 text-xs font-semibold uppercase tracking-wider text-slate-400"
+      >
+        Gestión del servicio
+      </p>
+      <nav aria-label="Navegación principal">
+        <p-menu
+          [model]="navigationItems"
+          styleClass="climatec-shell-menu w-full border-0 bg-transparent"
+        />
+      </nav>
+
+      <div class="mx-3 mt-8 border-t border-slate-700 pt-4">
+        <p class="text-xs leading-5 text-slate-400">
+          Servicio técnico de refrigeración
+        </p>
+      </div>
+    </aside>
+
+    <main class="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+      <div class="mx-auto w-full max-w-7xl">
+        <router-outlet />
+      </div>
+    </main>
+  </div>
+
+  <footer
+    class="border-t border-slate-200 bg-white px-4 py-3 text-center text-xs text-slate-500 sm:text-left sm:px-6"
+  >
+    ClimaTec · Gestión de servicio técnico
+  </footer>
+</div>

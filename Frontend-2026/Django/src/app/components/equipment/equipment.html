@@ -1,0 +1,225 @@
+<main class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600">
+        ClimaTec
+      </p>
+      <h1 class="mt-1 text-2xl font-bold text-slate-900">Equipos</h1>
+      <p class="mt-1 text-slate-600">
+        Consulta los equipos de climatización y sus clientes asociados.
+      </p>
+    </div>
+
+    @if (canManageEquipment) {
+      <p-button
+        label="Nuevo equipo"
+        icon="pi pi-plus"
+        (onClick)="openCreateForm()"
+      />
+    }
+  </div>
+
+  @if (errorMessage()) {
+    <div
+      role="alert"
+      class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+    >
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div
+      role="status"
+      class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+    >
+      {{ successMessage() }}
+    </div>
+  }
+
+  @if (canManageEquipment && formVisible()) {
+    <section
+      class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+      aria-labelledby="equipment-form-title"
+    >
+      <h2 id="equipment-form-title" class="text-lg font-semibold text-slate-900">
+        {{ editingEquipmentId() === null ? 'Registrar equipo' : 'Editar equipo' }}
+      </h2>
+      <form class="mt-4 space-y-4" (ngSubmit)="saveEquipment()">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="block text-sm font-medium text-slate-700" for="equipmentClient">
+            Cliente
+            <select
+              id="equipmentClient"
+              name="client"
+              [(ngModel)]="equipmentForm.client"
+              required
+              class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              <option [ngValue]="0" disabled>Selecciona un cliente</option>
+              @for (client of clients(); track client.id) {
+                <option [ngValue]="client.id">{{ client.name }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="block text-sm font-medium text-slate-700" for="equipmentName">
+            Nombre
+            <input
+              id="equipmentName"
+              name="name"
+              [(ngModel)]="equipmentForm.name"
+              required
+              maxlength="100"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label
+            class="block text-sm font-medium text-slate-700"
+            for="equipmentDescription"
+          >
+            Descripción
+            <input
+              id="equipmentDescription"
+              name="description"
+              [(ngModel)]="equipmentForm.description"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label class="block text-sm font-medium text-slate-700" for="equipmentStatus">
+            Estado
+            <select
+              id="equipmentStatus"
+              name="status"
+              [(ngModel)]="equipmentForm.status"
+              required
+              class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              @for (status of activeStatuses; track status.value) {
+                <option [value]="status.value">{{ status.label }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        @if (clients().length === 0) {
+          <p class="text-sm text-amber-800">
+            Registra primero un cliente para poder asociarlo al equipo.
+          </p>
+        }
+
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            [disabled]="saving()"
+            (click)="closeForm()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            [disabled]="saving() || clients().length === 0"
+          >
+            {{ saving() ? 'Guardando…' : 'Guardar equipo' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <p-card
+    header="Inventario de equipos"
+    subheader="Información sincronizada con el backend ClimaTec"
+    styleClass="shadow-sm"
+  >
+    <div class="overflow-x-auto">
+      <p-table
+        [value]="equipmentList()"
+        [loading]="loading()"
+        [paginator]="true"
+        [rows]="10"
+        styleClass="p-datatable-gridlines"
+      >
+        <ng-template #header>
+          <tr>
+            <th>ID</th>
+            <th>Equipo</th>
+            <th>Cliente</th>
+            <th>Descripción</th>
+            <th>Estado</th>
+            @if (canManageEquipment) {
+              <th>Acciones</th>
+            }
+          </tr>
+        </ng-template>
+        <ng-template #body let-item>
+          <tr>
+            <td>{{ item.id }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ clientName(item.client) }}</td>
+            <td>{{ item.description || 'N/D' }}</td>
+            <td>
+              <span
+                class="rounded-full px-2 py-1 text-xs font-semibold"
+                [class.bg-emerald-100]="item.status === 'ACTIVE'"
+                [class.text-emerald-800]="item.status === 'ACTIVE'"
+                [class.bg-slate-100]="item.status === 'INACTIVE'"
+                [class.text-slate-700]="item.status === 'INACTIVE'"
+              >
+                {{ item.status === 'ACTIVE' ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            @if (canManageEquipment) {
+              <td class="whitespace-nowrap">
+                <p-button
+                  label="Editar"
+                  severity="secondary"
+                  [outlined]="true"
+                  size="small"
+                  (onClick)="openEditForm(item)"
+                />
+                @if (pendingDeleteEquipmentId() === item.id) {
+                  <p-button
+                    label="Confirmar"
+                    severity="danger"
+                    size="small"
+                    [loading]="deleting()"
+                    [disabled]="deleting()"
+                    (onClick)="deleteEquipment(item)"
+                  />
+                  <p-button
+                    label="Cancelar"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    [disabled]="deleting()"
+                    (onClick)="cancelDelete()"
+                  />
+                } @else {
+                  <p-button
+                    label="Eliminar"
+                    severity="danger"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="requestDelete(item)"
+                  />
+                }
+              </td>
+            }
+          </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+          <tr>
+            <td [attr.colspan]="canManageEquipment ? 6 : 5" class="p-4 text-center text-slate-500">
+              No se encontraron equipos registrados.
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </p-card>
+</main>

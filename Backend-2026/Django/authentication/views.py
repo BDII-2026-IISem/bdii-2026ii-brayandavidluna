@@ -1,4 +1,6 @@
-from rest_framework import viewsets, status
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -7,12 +9,22 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from drf_spectacular.utils import extend_schema
 
-from authentication.models import Role, Resource, RoleUser, ResourceRole
-from authentication.permissions import HasResourceAccess
+from authentication.models import (
+    CustomUser,
+    Resource,
+    ResourceRole,
+    Role,
+    RoleUser,
+)
+from authentication.permissions import (
+    HasResourceAccess,
+    effective_permissions_for_user,
+)
 from authentication.serializers import (
     CustomTokenObtainPairSerializer,
     LogoutRequestSerializer,
     MessageSerializer,
+    UserAdminSerializer,
     UserProfileSerializer,
     RoleSerializer,
     ResourceSerializer,
@@ -62,7 +74,48 @@ class UserProfileView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class EffectivePermissionsView(APIView):
+    permission_classes = [IsAuthenticated, HasResourceAccess]
+
+    def get(self, request):
+        return Response(
+            {"permissions": effective_permissions_for_user(request.user)},
+            status=status.HTTP_200_OK,
+        )
+
+
 # --- ViewSets del ISS-23: CRUD de la Matriz RBAC ---
+class UserAdminViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all().order_by("username")
+    serializer_class = UserAdminSerializer
+    permission_classes = [IsAuthenticated, HasResourceAccess]
+
+    def perform_destroy(self, instance):
+        if instance.pk == self.request.user.pk:
+            raise ValidationError(
+                {"detail": "No se puede eliminar el usuario de la sesión actual."}
+            )
+        instance.delete()
+
+    def perform_update(self, serializer):
+        if (
+            serializer.instance.pk == self.request.user.pk
+            and serializer.validated_data.get("is_active") is False
+        ):
+            raise ValidationError(
+                {"is_active": "No se puede desactivar el usuario de la sesión actual."}
+            )
+        serializer.save()
+
+    @action(detail=True, methods=["get"], url_path="permissions")
+    def permissions(self, request, pk=None):
+        user = self.get_object()
+        return Response(
+            {"permissions": effective_permissions_for_user(user)},
+            status=status.HTTP_200_OK,
+        )
+
+
 class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer

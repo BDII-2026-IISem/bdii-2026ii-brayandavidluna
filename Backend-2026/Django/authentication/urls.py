@@ -5,6 +5,8 @@ from authentication.views import (
     CustomTokenObtainPairView,
     LogoutAPIView,
     UserProfileView,
+    EffectivePermissionsView,
+    UserAdminViewSet,
     RoleViewSet,
     ResourceViewSet,
     RoleUserViewSet,
@@ -12,6 +14,7 @@ from authentication.views import (
 )
 
 router = DefaultRouter()
+router.register(r"users", UserAdminViewSet, basename="user")
 router.register(r"roles", RoleViewSet, basename="role")
 router.register(r"resources", ResourceViewSet, basename="resource")
 router.register(r"role-users", RoleUserViewSet, basename="role-user")
@@ -22,5 +25,10 @@ urlpatterns = [
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/logout/", LogoutAPIView.as_view(), name="auth_logout"),
     path("auth/me/", UserProfileView.as_view(), name="user_profile"),
+    path(
+        "auth/permissions/",
+        EffectivePermissionsView.as_view(),
+        name="effective_permissions",
+    ),
     path("", include(router.urls)),
 ]

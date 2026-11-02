@@ -1,0 +1,290 @@
+<main class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600">
+        ClimaTec
+      </p>
+      <h1 class="mt-1 text-2xl font-bold text-slate-900">Repuestos</h1>
+      <p class="mt-1 text-slate-600">
+        Administra existencias y consulta los repuestos disponibles para servicio.
+      </p>
+    </div>
+
+    @if (canManageSpareParts) {
+      <div class="flex flex-wrap gap-2">
+        <p-button
+          [label]="onlyAvailable() ? 'Ver administración' : 'Solo disponibles'"
+          [icon]="onlyAvailable() ? 'pi pi-list' : 'pi pi-check-circle'"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="toggleAvailabilityFilter()"
+        />
+        @if (!onlyAvailable()) {
+          <p-button
+            label="Nuevo repuesto"
+            icon="pi pi-plus"
+            (onClick)="openCreateForm()"
+          />
+        }
+      </div>
+    }
+  </div>
+
+  @if (errorMessage()) {
+    <div
+      role="alert"
+      class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+    >
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div
+      role="status"
+      class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+    >
+      {{ successMessage() }}
+    </div>
+  }
+
+  @if (!onlyAvailable() && outOfStockCount() > 0) {
+    <section
+      class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+      aria-label="Resumen de inventario"
+    >
+      {{ outOfStockCount() }}
+      {{ outOfStockCount() === 1 ? 'repuesto sin existencias' : 'repuestos sin existencias' }}
+    </section>
+  }
+
+  @if (canManageSpareParts && formVisible()) {
+    <section
+      class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+      aria-labelledby="spare-part-form-title"
+    >
+      <h2 id="spare-part-form-title" class="text-lg font-semibold text-slate-900">
+        {{ editingSparePartId() === null ? 'Registrar repuesto' : 'Editar repuesto' }}
+      </h2>
+      <form class="mt-4 space-y-4" (ngSubmit)="saveSparePart()">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="block text-sm font-medium text-slate-700" for="sparePartName">
+            Nombre
+            <input
+              id="sparePartName"
+              name="name"
+              [(ngModel)]="sparePartForm.name"
+              required
+              maxlength="150"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label
+            class="block text-sm font-medium text-slate-700"
+            for="sparePartDescription"
+          >
+            Descripción
+            <input
+              id="sparePartDescription"
+              name="description"
+              [(ngModel)]="sparePartForm.description"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label class="block text-sm font-medium text-slate-700" for="sparePartPrice">
+            Precio (COP)
+            <input
+              id="sparePartPrice"
+              name="price"
+              type="number"
+              [(ngModel)]="sparePartForm.price"
+              required
+              min="0.01"
+              step="0.01"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label class="block text-sm font-medium text-slate-700" for="sparePartStock">
+            Existencias
+            <input
+              id="sparePartStock"
+              name="stock"
+              type="number"
+              [(ngModel)]="sparePartForm.stock"
+              required
+              min="0"
+              step="1"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label
+            class="block text-sm font-medium text-slate-700"
+            for="sparePartStatus"
+          >
+            Estado
+            <select
+              id="sparePartStatus"
+              name="status"
+              [(ngModel)]="sparePartForm.status"
+              required
+              class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              @for (status of activeStatuses; track status.value) {
+                <option [value]="status.value">{{ status.label }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            [disabled]="saving()"
+            (click)="closeForm()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            [disabled]="saving()"
+          >
+            {{ saving() ? 'Guardando…' : 'Guardar repuesto' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (canManageSpareParts) {
+    <p-card
+      [header]="onlyAvailable() ? 'Repuestos disponibles' : 'Inventario de repuestos'"
+      [subheader]="
+        onlyAvailable()
+          ? 'Elementos activos con existencias mayores que cero'
+          : 'Información sincronizada con el backend ClimaTec'
+      "
+      styleClass="shadow-sm"
+    >
+      <div class="mb-4">
+        <label class="sr-only" for="sparePartSearch">Buscar repuestos</label>
+        <input
+          id="sparePartSearch"
+          name="search"
+          type="search"
+          aria-label="Buscar repuestos"
+          [ngModel]="searchTerm()"
+          (ngModelChange)="searchTerm.set($event)"
+          placeholder="Buscar por nombre o descripción"
+          class="block w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 py-2"
+        />
+      </div>
+
+      <div class="overflow-x-auto">
+        <p-table
+          [value]="filteredSpareParts()"
+          [loading]="loading()"
+          [paginator]="true"
+          [rows]="10"
+          styleClass="p-datatable-gridlines"
+        >
+          <ng-template #header>
+            <tr>
+              <th>ID</th>
+              <th>Repuesto</th>
+              <th>Descripción</th>
+              <th>Precio</th>
+              <th>Existencias</th>
+              <th>Estado</th>
+              @if (!onlyAvailable()) {
+                <th>Acciones</th>
+              }
+            </tr>
+          </ng-template>
+          <ng-template #body let-part>
+            <tr [class.bg-amber-50]="part.stock === 0 && part.status === 'ACTIVE'">
+              <td>{{ part.id }}</td>
+              <td>{{ part.name }}</td>
+              <td>{{ part.description || 'N/D' }}</td>
+              <td>{{ part.price | currency: 'COP' : 'symbol-narrow' : '1.2-2' : 'es-CO' }}</td>
+              <td>{{ part.stock }}</td>
+              <td>
+                <span
+                  class="rounded-full px-2 py-1 text-xs font-semibold"
+                  [class.bg-emerald-100]="part.status === 'ACTIVE'"
+                  [class.text-emerald-800]="part.status === 'ACTIVE'"
+                  [class.bg-slate-100]="part.status === 'INACTIVE'"
+                  [class.text-slate-700]="part.status === 'INACTIVE'"
+                >
+                  {{ part.status === 'ACTIVE' ? 'Activo' : 'Inactivo' }}
+                </span>
+                @if (part.status === 'ACTIVE' && part.stock === 0) {
+                  <span class="ml-1 text-xs font-medium text-amber-800">
+                    Sin existencias
+                  </span>
+                }
+              </td>
+              @if (!onlyAvailable()) {
+                <td class="whitespace-nowrap">
+                  <p-button
+                    label="Editar"
+                    severity="secondary"
+                    [outlined]="true"
+                    size="small"
+                    [disabled]="saving()"
+                    (onClick)="openEditForm(part)"
+                  />
+                  @if (pendingStatusSparePartId() === part.id) {
+                    <span class="mr-2 text-sm text-slate-700">
+                      {{ part.status === 'ACTIVE' ? '¿Desactivar este repuesto?' : '¿Reactivar este repuesto?' }}
+                    </span>
+                    <p-button
+                      label="Confirmar"
+                      [severity]="part.status === 'ACTIVE' ? 'danger' : 'success'"
+                      size="small"
+                      [loading]="saving()"
+                      [disabled]="saving()"
+                      (onClick)="confirmStatusChange(part)"
+                    />
+                    <p-button
+                      label="Cancelar"
+                      severity="secondary"
+                      [text]="true"
+                      size="small"
+                      [disabled]="saving()"
+                      (onClick)="cancelStatusChange()"
+                    />
+                  } @else {
+                    <p-button
+                      [label]="part.status === 'ACTIVE' ? 'Desactivar' : 'Reactivar'"
+                      [severity]="part.status === 'ACTIVE' ? 'danger' : 'success'"
+                      [outlined]="true"
+                      size="small"
+                      [disabled]="saving()"
+                      (onClick)="toggleSparePartStatus(part)"
+                    />
+                  }
+                </td>
+              }
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr>
+              <td
+                [attr.colspan]="onlyAvailable() ? 6 : 7"
+                class="p-4 text-center text-slate-500"
+              >
+                {{ onlyAvailable() ? 'No hay repuestos disponibles.' : 'No se encontraron repuestos.' }}
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </p-card>
+  }
+</main>

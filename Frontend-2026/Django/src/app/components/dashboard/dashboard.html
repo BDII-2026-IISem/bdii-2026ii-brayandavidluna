@@ -1,0 +1,115 @@
+<section class="space-y-6">
+  <div>
+    <p class="text-sm font-semibold uppercase tracking-wider text-indigo-600">Panel de control</p>
+    <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+      @if (authService.currentUser(); as user) {
+        Hola, {{ user.firstName || user.username }}
+      } @else {
+        Bienvenido a ClimaTec
+      }
+    </h1>
+    <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+      Consulta la operación del servicio técnico desde un solo lugar.
+    </p>
+  </div>
+
+  @if (errorMessage()) {
+    <div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <section aria-label="Indicadores de operación">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm font-medium text-slate-600">Órdenes abiertas</p>
+        <p class="mt-2 text-3xl font-bold text-indigo-700">
+          {{ loading() ? '—' : metrics().openOrders }}
+        </p>
+      </article>
+      <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm font-medium text-slate-600">Clientes activos</p>
+        <p class="mt-2 text-3xl font-bold text-indigo-700">
+          {{ loading() ? '—' : metrics().activeClients }}
+        </p>
+      </article>
+      <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm font-medium text-slate-600">Equipos activos</p>
+        <p class="mt-2 text-3xl font-bold text-indigo-700">
+          {{ loading() ? '—' : metrics().activeEquipment }}
+        </p>
+      </article>
+      @if (canViewInventory) {
+        <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-sm font-medium text-slate-600">Repuestos disponibles</p>
+          <p class="mt-2 text-3xl font-bold text-indigo-700">
+            {{ loading() ? '—' : metrics().availableSpareParts }}
+          </p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <p-card
+      header="Órdenes de servicio"
+      subheader="Seguimiento de reparaciones"
+      styleClass="h-full shadow-sm"
+    >
+      <p class="mb-5 text-sm leading-6 text-slate-600">
+        Consulta las órdenes, sus equipos y el estado de atención.
+      </p>
+      <p-button label="Ver órdenes" icon="pi pi-wrench" routerLink="/service-orders" />
+    </p-card>
+
+    <p-card header="Clientes" subheader="Personas atendidas" styleClass="h-full shadow-sm">
+      <p class="mb-5 text-sm leading-6 text-slate-600">
+        Revisa los registros de clientes disponibles para tu cuenta.
+      </p>
+      <p-button label="Ver clientes" icon="pi pi-users" severity="success" routerLink="/clients" />
+    </p-card>
+
+    <p-card header="Equipos" subheader="Equipos de climatización" styleClass="h-full shadow-sm">
+      <p class="mb-5 text-sm leading-6 text-slate-600">
+        Consulta los equipos asociados a los clientes.
+      </p>
+      <p-button label="Ver equipos" icon="pi pi-desktop" severity="help" routerLink="/equipment" />
+    </p-card>
+
+    @if (canViewInventory) {
+      <p-card header="Técnicos" subheader="Equipo de servicio" styleClass="h-full shadow-sm">
+        <p class="mb-5 text-sm leading-6 text-slate-600">
+          Consulta los técnicos disponibles para atender las órdenes.
+        </p>
+        <p-button
+          label="Ver técnicos"
+          icon="pi pi-wrench"
+          severity="help"
+          routerLink="/technicians"
+        />
+      </p-card>
+      <p-card header="Repuestos" subheader="Inventario del servicio" styleClass="h-full shadow-sm">
+        <p class="mb-5 text-sm leading-6 text-slate-600">
+          Administra existencias y consulta los repuestos disponibles.
+        </p>
+        <p-button
+          label="Ver repuestos"
+          icon="pi pi-box"
+          severity="help"
+          routerLink="/spare-parts"
+        />
+      </p-card>
+    }
+  </div>
+
+  <section
+    class="rounded-xl border border-indigo-100 bg-indigo-50 p-5 sm:p-6"
+    aria-labelledby="dashboard-info-title"
+  >
+    <h2 id="dashboard-info-title" class="font-semibold text-indigo-950">Operación ClimaTec</h2>
+    <p class="mt-2 max-w-3xl text-sm leading-6 text-indigo-900/80">
+      El acceso a cada registro se valida en el backend. Las cuentas de cliente solo consultan
+      información vinculada explícitamente a su perfil.
+    </p>
+  </section>
+</section>

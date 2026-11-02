@@ -31,6 +31,40 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return [ru.role.name for ru in obj.user_roles.all()]
 
 
+class UserAdminSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "password",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        if self.instance is None and not attrs.get("password"):
+            raise serializers.ValidationError(
+                {"password": "La contraseña es obligatoria al crear un usuario."}
+            )
+        if self.instance is not None and "password" in attrs:
+            raise serializers.ValidationError(
+                {"password": "La contraseña no se puede actualizar desde este recurso."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        return CustomUser.objects.create_user(password=password, **validated_data)
+
+
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role

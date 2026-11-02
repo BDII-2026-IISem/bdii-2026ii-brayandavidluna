@@ -1,0 +1,51 @@
+<div class="flex items-center justify-center min-h-screen bg-slate-100">
+  <div class="w-full max-w-md">
+    <p-card
+      header="ClimaTec - Iniciar Sesión"
+      subheader="Gestión y Soporte Técnico"
+      styleClass="shadow-md"
+    >
+      <div class="flex flex-col gap-4">
+        @if (errorMessage) {
+          <div class="p-3 bg-red-100 text-red-700 rounded-md text-sm">
+            {{ errorMessage }}
+          </div>
+        }
+
+        <div class="flex flex-col gap-2">
+          <label for="username" class="font-medium text-slate-700">Usuario</label>
+          <input
+            pInputText
+            id="username"
+            [(ngModel)]="username"
+            placeholder="Ingrese su usuario"
+            class="w-full"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="password" class="font-medium text-slate-700">Contraseña</label>
+          <p-password
+            id="password"
+            [(ngModel)]="password"
+            [feedback]="false"
+            [toggleMask]="true"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            placeholder="Ingrese su contraseña"
+          ></p-password>
+        </div>
+
+        <div class="pt-2">
+          <p-button
+            label="Ingresar"
+            icon="pi pi-sign-in"
+            styleClass="w-full"
+            [loading]="loading"
+            (onClick)="onLogin()"
+          ></p-button>
+        </div>
+      </div>
+    </p-card>
+  </div>
+</div>

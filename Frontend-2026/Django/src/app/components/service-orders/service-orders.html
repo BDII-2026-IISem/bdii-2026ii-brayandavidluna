@@ -1,0 +1,211 @@
+<main class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600">
+        ClimaTec
+      </p>
+      <h1 class="mt-1 text-2xl font-bold text-slate-900">Órdenes de servicio</h1>
+      <p class="mt-1 text-slate-600">
+        Consulta y registra atenciones técnicas asociadas a clientes y equipos.
+      </p>
+    </div>
+
+    @if (canManageServiceOrders) {
+      <p-button
+        label="Nueva orden"
+        icon="pi pi-plus"
+        [disabled]="loadingLookups()"
+        (onClick)="openCreateForm()"
+      />
+    }
+  </div>
+
+  @if (errorMessage()) {
+    <div
+      role="alert"
+      class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+    >
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div
+      role="status"
+      class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+    >
+      {{ successMessage() }}
+    </div>
+  }
+
+  @if (canManageServiceOrders && formVisible()) {
+    <section
+      class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+      aria-labelledby="service-order-form-title"
+    >
+      <h2 id="service-order-form-title" class="text-lg font-semibold text-slate-900">
+        Registrar orden de servicio
+      </h2>
+      <form class="mt-4 space-y-4" (ngSubmit)="saveServiceOrder()">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="block text-sm font-medium text-slate-700" for="orderClient">
+            Cliente
+            <select
+              id="orderClient"
+              name="client"
+              [(ngModel)]="orderForm.client"
+              required
+              (ngModelChange)="onClientChange()"
+              class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              <option [ngValue]="null" disabled>Selecciona un cliente</option>
+              @for (client of clients(); track client.id) {
+                <option [ngValue]="client.id">{{ client.name }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="block text-sm font-medium text-slate-700" for="orderEquipment">
+            Equipo del cliente
+            <select
+              id="orderEquipment"
+              name="equipment"
+              [(ngModel)]="orderForm.equipment"
+              required
+              [disabled]="orderForm.client === null"
+              class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 disabled:bg-slate-100"
+            >
+              <option [ngValue]="null" disabled>Selecciona un equipo</option>
+              @for (equipment of availableEquipment; track equipment.id) {
+                <option [ngValue]="equipment.id">{{ equipment.name }}</option>
+              }
+            </select>
+            @if (orderForm.client !== null && availableEquipment.length === 0) {
+              <span class="mt-1 block text-xs text-amber-800">
+                Este cliente no tiene equipos activos disponibles.
+              </span>
+            }
+          </label>
+
+          <label class="block text-sm font-medium text-slate-700" for="orderTechnician">
+            Técnico
+            <select
+              id="orderTechnician"
+              name="technician"
+              [(ngModel)]="orderForm.technician"
+              required
+              class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              <option [ngValue]="null" disabled>Selecciona un técnico</option>
+              @for (technician of technicians(); track technician.id) {
+                <option [ngValue]="technician.id">{{ technician.name }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="block text-sm font-medium text-slate-700" for="orderNumber">
+            Número de orden
+            <input
+              id="orderNumber"
+              name="number"
+              [(ngModel)]="orderForm.number"
+              required
+              maxlength="50"
+              placeholder="OS-2026-001"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+        </div>
+
+        @if (clients().length === 0 || technicians().length === 0) {
+          <p class="text-sm text-amber-800">
+            Para registrar una orden debe existir al menos un cliente y un técnico activo.
+          </p>
+        }
+
+        <p class="text-sm text-slate-500">
+          La fecha de apertura se registra automáticamente con la zona horaria local.
+          El diagnóstico y los consumos de repuestos se administran como registros
+          asociados en el flujo de la orden.
+        </p>
+
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            [disabled]="saving()"
+            (click)="closeForm()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            [disabled]="saving() || loadingLookups() || clients().length === 0 || technicians().length === 0"
+          >
+            {{ saving() ? 'Guardando…' : 'Crear orden' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <p-card
+    header="Órdenes registradas"
+    subheader="Información sincronizada con el backend ClimaTec"
+    styleClass="shadow-sm"
+  >
+    <div class="overflow-x-auto">
+      <p-table
+        [value]="orders()"
+        [loading]="loading()"
+        [paginator]="true"
+        [rows]="10"
+        styleClass="p-datatable-gridlines"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Número</th>
+            <th>Cliente</th>
+            <th>Equipo</th>
+            <th>Técnico</th>
+            <th>Estado</th>
+            <th>Fecha de apertura</th>
+            <th>Total</th>
+            <th>Detalle</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-order>
+          <tr>
+            <td class="font-medium">{{ order.number }}</td>
+            <td>{{ clientName(order.client) }}</td>
+            <td>{{ equipmentName(order.equipment) }}</td>
+            <td>{{ technicianName(order.technician) }}</td>
+            <td>
+              <span class="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+                {{ order.status }}
+              </span>
+            </td>
+            <td>{{ order.openedAt | date: 'short' }}</td>
+            <td>{{ order.total | currency: 'COP' : 'symbol-narrow' : '1.2-2' : 'es-CO' }}</td>
+            <td>
+              <a
+                [routerLink]="['/service-orders', order.id]"
+                class="font-semibold text-indigo-700 hover:text-indigo-900"
+              >
+                Ver detalle
+              </a>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+          <tr>
+            <td colspan="8" class="p-4 text-center text-slate-500">
+              No se encontraron órdenes de servicio registradas.
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </p-card>
+</main>

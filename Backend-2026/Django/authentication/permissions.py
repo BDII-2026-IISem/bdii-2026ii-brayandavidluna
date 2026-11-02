@@ -2,6 +2,29 @@ from rest_framework import permissions
 from authentication.models import ResourceRole
 
 
+def effective_permissions_for_user(user):
+    grants = (
+        ResourceRole.objects.filter(role__role_users__user=user)
+        .select_related("resource", "role")
+        .values(
+            "resource__method",
+            "resource__path",
+            "role_id",
+            "role__name",
+        )
+        .distinct()
+    )
+    return [
+        {
+            "method": grant["resource__method"],
+            "path": grant["resource__path"],
+            "roleId": grant["role_id"],
+            "roleName": grant["role__name"],
+        }
+        for grant in grants
+    ]
+
+
 class HasResourceAccess(permissions.BasePermission):
     @staticmethod
     def _path_matches(resource_path, request_path):

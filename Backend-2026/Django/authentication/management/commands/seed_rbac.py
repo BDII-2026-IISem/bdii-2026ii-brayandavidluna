@@ -15,7 +15,13 @@ BUSINESS_COLLECTIONS = (
     "payments",
 )
 
-RBAC_COLLECTIONS = ("roles", "resources", "role-users", "resource-roles")
+RBAC_COLLECTIONS = (
+    "users",
+    "roles",
+    "resources",
+    "role-users",
+    "resource-roles",
+)
 COLLECTION_METHODS = ("GET", "POST")
 DETAIL_METHODS = ("GET", "PUT", "PATCH", "DELETE")
 ADMIN_READ_ONLY_ENDPOINTS = (
@@ -74,6 +80,30 @@ class Command(BaseCommand):
         )
         ResourceRole.objects.get_or_create(resource=me_resource, role=admin_role)
         ResourceRole.objects.get_or_create(resource=me_resource, role=client_role)
+
+        permissions_resource = self._ensure_resource(
+            "/api/v1/auth/permissions/",
+            "GET",
+            "Consultar los permisos efectivos del usuario",
+        )
+        ResourceRole.objects.get_or_create(
+            resource=permissions_resource,
+            role=admin_role,
+        )
+        ResourceRole.objects.get_or_create(
+            resource=permissions_resource,
+            role=client_role,
+        )
+
+        user_permissions_resource = self._ensure_resource(
+            "/api/v1/users/<int:pk>/permissions/",
+            "GET",
+            "Consultar los permisos efectivos de un usuario",
+        )
+        ResourceRole.objects.get_or_create(
+            resource=user_permissions_resource,
+            role=admin_role,
+        )
 
         self.stdout.write(self.style.SUCCESS("Semilla RBAC ejecutada correctamente."))
         if user:
