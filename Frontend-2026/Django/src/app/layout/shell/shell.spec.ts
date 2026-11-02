@@ -49,9 +49,19 @@ describe('ShellComponent', () => {
   it('renders the ClimaTec shell and only implemented destinations', () => {
     const element = fixture.nativeElement as HTMLElement;
 
+    const menuButton = element.querySelector(
+      'button[aria-label="Abrir menú de navegación"]',
+    ) as HTMLButtonElement;
+    const sidebar = element.querySelector('aside') as HTMLElement;
+
     expect(element.querySelector('header')?.textContent).toContain('ClimaTec');
     expect(element.querySelector('nav')?.getAttribute('aria-label')).toBe('Navegación principal');
     expect(element.querySelector('footer')?.textContent).toContain('Gestión de servicio técnico');
+    expect(menuButton.getAttribute('aria-controls')).toBe('primary-navigation');
+    expect(menuButton.getAttribute('aria-expanded')).toBe('false');
+    expect(sidebar.classList).toContain('-translate-x-full');
+    expect(sidebar.getAttribute('aria-hidden')).toBe('true');
+    expect(sidebar.hasAttribute('inert')).toBe(true);
     expect(element.querySelectorAll('nav a')).toHaveLength(7);
     expect(
       Array.from(element.querySelectorAll('nav a')).map((link) => link.getAttribute('href')),
@@ -74,6 +84,15 @@ describe('ShellComponent', () => {
   });
 
   it('uses PrimeNG menu items and closes the mobile menu after selection', () => {
+    const menuButton = fixture.nativeElement.querySelector(
+      'button[aria-label="Abrir menú de navegación"]',
+    ) as HTMLButtonElement;
+    menuButton.click();
+    fixture.detectChanges();
+
+    expect(component.menuOpen()).toBe(true);
+    expect(menuButton.getAttribute('aria-expanded')).toBe('true');
+
     component.menuOpen.set(true);
 
     const clientsItem = component.navigationItems[1];

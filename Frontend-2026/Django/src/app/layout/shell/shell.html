@@ -5,8 +5,9 @@
     <div class="flex items-center gap-3">
       <button
         type="button"
-        class="inline-flex size-10 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-indigo-600 lg:hidden"
+        class="inline-flex size-10 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-indigo-600"
         aria-label="Abrir menú de navegación"
+        aria-controls="primary-navigation"
         [attr.aria-expanded]="menuOpen()"
         (click)="menuOpen.set(!menuOpen())"
       >
@@ -49,15 +50,18 @@
     @if (menuOpen()) {
       <button
         type="button"
-        class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden"
+        class="fixed inset-x-0 bottom-0 top-16 z-30 bg-slate-950/40"
         aria-label="Cerrar menú de navegación"
         (click)="closeMenu()"
       ></button>
     }
 
     <aside
-      class="fixed inset-y-16 left-0 z-40 w-72 -translate-x-full border-r border-slate-800 bg-slate-900 px-3 py-5 text-slate-100 transition-transform duration-200 lg:static lg:z-auto lg:w-64 lg:translate-x-0"
+      id="primary-navigation"
+      class="fixed inset-y-16 left-0 z-40 w-72 -translate-x-full border-r border-slate-800 bg-slate-900 px-3 py-5 text-slate-100 shadow-xl transition-transform duration-200"
       [class.translate-x-0]="menuOpen()"
+      [attr.aria-hidden]="!menuOpen()"
+      [attr.inert]="menuOpen() ? null : ''"
     >
       <p
         class="px-3 pb-3 text-xs font-semibold uppercase tracking-wider text-slate-400"
