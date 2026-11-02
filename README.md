@@ -43,11 +43,11 @@ Rutas principales:
 | Clientes | `/api/v1/clients/` |
 | Equipos y técnicos | `/api/v1/equipment/`, `/api/v1/technicians/` |
 | Órdenes y actividades de servicio | `/api/v1/service-orders/`, `/api/v1/diagnoses/`, `/api/v1/quotes/`, `/api/v1/warranties/` |
-| Repuestos, consumos y pagos | `/api/v1/spare-parts/`, `/api/v1/spare-part-consumptions/`, `/api/v1/payments/` |
+| Repuestos, consumos y pagos | `/api/v1/spare-parts/`, `/api/v1/spare-parts/available/`, `/api/v1/spare-part-consumptions/`, `/api/v1/payments/` |
 | Login, renovación, cierre y perfil | `/api/v1/auth/login/`, `/api/v1/auth/token/refresh/`, `/api/v1/auth/logout/`, `/api/v1/auth/me/` |
 | OpenAPI y Swagger | `/api/schema/`, `/api/docs/` |
 
-Las rutas de negocio y el perfil requieren autenticación y permisos RBAC. El inventario se descuenta al registrar el consumo del repuesto en una orden, no al registrar un pago.
+Las rutas de negocio y el perfil requieren autenticación y permisos RBAC. `seed_rbac` crea los roles y permisos; por seguridad, no asigna automáticamente `ADMIN` al primer usuario. Para otorgarlo a una cuenta existente, ejecútalo con `python manage.py seed_rbac --username nombre_usuario` (sustituye el ejemplo por su username real). El rol `ADMIN` recibe acceso CRUD a las rutas de negocio y de la matriz. `CLIENT` puede consultar solo los datos enlazados explícitamente a su cuenta: cliente, equipos, órdenes y actividades relacionadas, sin escrituras ni acceso al inventario. El inventario se descuenta al registrar el consumo del repuesto en una orden, no al registrar un pago. La ruta de disponibles aplica una lectura filtrada con `ListAPIView`.
 
 ## Recorrido del trabajo
 
@@ -66,6 +66,8 @@ Como validación del backend se ejecutaron `manage.py check`, la comprobación d
 basededatos2/
 ├── Backend-2026/
 │   └── Django/              # API, aplicaciones, pruebas y documentación del backend
+├── Frontend-2026/
+│   └── Django/              # Aplicación Angular para ClimaTec y sus evidencias
 ├── Brayan/
 │   ├── scripts/             # SQL organizado por motor
 │   ├── evidencias/          # Capturas organizadas por motor
@@ -74,7 +76,7 @@ basededatos2/
 └── proceso1.md              # Despliegue y conexión de los motores con Docker y DBeaver
 ```
 
-La carpeta `Frontend-2026/` está reservada para el frontend; actualmente no contiene archivos versionados.
+El frontend Angular de ClimaTec está en [`Frontend-2026/Django/`](./Frontend-2026/Django/); su guía de ejecución y el estado ISS están en el README y [`proceso.md`](./Frontend-2026/Django/proceso.md).
 
 ## Ejecutar el backend
 
@@ -108,7 +110,7 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-La guía académica de ISS-00 fija Python 3.12. La versión comprobada durante el desarrollo local fue Python 3.14.4; para ajustarse exactamente al requisito del curso, usa Python 3.12.
+La guía académica de ISS-00 fija Python 3.12. Se conserva intencionalmente Python 3.14.4 en el entorno local y el backend está validado con esa versión; por eso el runtime no coincide exactamente con el indicado por la guía.
 
 ## Guías y evidencias
 

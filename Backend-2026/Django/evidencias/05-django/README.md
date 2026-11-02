@@ -187,7 +187,7 @@ Se crearon los ViewSets y Serializers para la administración de `Role`, `Resour
 ### ISS-24: Semilla de Datos RBAC y Autorización Bearer en Swagger
 Se creó el comando de gestión personalizado `python manage.py seed_rbac` en `authentication/management/commands/seed_rbac.py` para poblar la matriz inicial de seguridad con roles `ADMIN` y `CLIENT`, y se configuró la autenticación Bearer JWT en `drf-spectacular`.
 
-La semilla crea los roles iniciales y asocia ambos a `GET /api/v1/auth/me/`; no habilita automáticamente las demás rutas. Para autorizar otros endpoints se deben registrar sus recursos y asignar las relaciones correspondientes.
+La semilla crea los roles iniciales y sus permisos: `ADMIN` obtiene CRUD de negocio y RBAC, mientras que `CLIENT` obtiene lectura de perfil y rutas de negocio filtradas por el vínculo explícito usuario-cliente. No asigna roles de forma implícita: para otorgar `ADMIN` se debe ejecutar `python manage.py seed_rbac --username nombre_usuario` (sustituyendo el ejemplo por un username existente); el rol `CLIENT` se asigna a una cuenta desde el admin. La captura siguiente es evidencia histórica de una ejecución anterior a estos ajustes.
 
 ![Ejecución del Seeder RBAC en Terminal](39_iss24_seed_rbac_terminal.png)
 

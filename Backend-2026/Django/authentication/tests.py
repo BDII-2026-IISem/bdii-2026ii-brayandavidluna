@@ -1,12 +1,13 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 from django.test.client import RequestFactory
 from django.template.loader import render_to_string
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib import admin
+from django.core.management import call_command
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.token_blacklist.models import (
@@ -15,8 +16,10 @@ from rest_framework_simplejwt.token_blacklist.models import (
 )
 from rest_framework_simplejwt.tokens import AccessToken
 
-from authentication.models import ResourceRole
+from authentication.models import CustomUser, Resource, ResourceRole, Role, RoleUser
 from authentication.permissions import HasResourceAccess
+from clients.models import Client
+from authentication.admin import CustomUserAdmin, CustomUserCreationForm
 
 
 class AdminSpanishLabelsTests(SimpleTestCase):
@@ -24,6 +27,16 @@ class AdminSpanishLabelsTests(SimpleTestCase):
         for model in (Group, BlacklistedToken, OutstandingToken):
             with self.subTest(model=model.__name__):
                 self.assertFalse(admin.site.is_registered(model))
+
+    def test_client_accounts_and_role_assignments_are_manageable_in_admin(self):
+        self.assertTrue(admin.site.is_registered(CustomUser))
+        self.assertIn(
+            RoleUser,
+            [
+                inline.model
+                for inline in CustomUserAdmin(CustomUser, admin.site).inlines
+            ],
+        )
 
     def test_submit_buttons_are_in_spanish(self):
         rendered = render_to_string(
@@ -53,21 +66,43 @@ class AdminSpanishLabelsTests(SimpleTestCase):
         self.assertNotIn("Save", rendered)
 
 
+class UserAdminProvisioningTests(TestCase):
+    def test_admin_creation_form_saves_required_email_and_hashed_password(self):
+        form = CustomUserCreationForm(
+            data={
+                "username": "portal-user",
+                "email": "portal-user@example.com",
+                "password1": "ClimaTec-Client-2026!Secure",
+                "password2": "ClimaTec-Client-2026!Secure",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+        user = form.save()
+
+        self.assertEqual(user.email, "portal-user@example.com")
+        self.assertTrue(user.check_password("ClimaTec-Client-2026!Secure"))
+
+
 class HasResourceAccessTests(SimpleTestCase):
     def test_permission_queries_existing_resource_role_relations(self):
         user = get_user_model()(pk=1)
         request = RequestFactory().get("/api/v1/auth/me/")
         request.user = user
         expected_filters = {
-            "resource__path": "/api/v1/auth/me/",
             "resource__method": "GET",
             "role__role_users__user": user,
         }
+        queryset = SimpleNamespace(
+            distinct=lambda: ["/api/v1/auth/me/"]
+        )
 
         with patch.object(
             ResourceRole.objects,
             "filter",
-            return_value=SimpleNamespace(exists=lambda: True),
+            return_value=SimpleNamespace(
+                values_list=lambda *args, **kwargs: queryset
+            ),
         ) as filter_resources:
             allowed = HasResourceAccess().has_permission(request, view=None)
 
@@ -91,16 +126,46 @@ class HasResourceAccessTests(SimpleTestCase):
         with patch.object(
             ResourceRole.objects,
             "filter",
-            return_value=SimpleNamespace(exists=lambda: False),
+            return_value=SimpleNamespace(
+                values_list=lambda *args, **kwargs: SimpleNamespace(
+                    distinct=lambda: []
+                )
+            ),
         ):
             allowed = HasResourceAccess().has_permission(request, view=None)
 
         self.assertFalse(allowed)
 
+    def test_permission_matches_integer_detail_route_template(self):
+        request = RequestFactory().get("/api/v1/clients/418/")
+        request.user = get_user_model()(pk=1)
+
+        with patch.object(
+            ResourceRole.objects,
+            "filter",
+            return_value=SimpleNamespace(
+                values_list=lambda *args, **kwargs: SimpleNamespace(
+                    distinct=lambda: ["/api/v1/clients/<int:pk>/"]
+                )
+            ),
+        ):
+            allowed = HasResourceAccess().has_permission(request, view=None)
+
+        self.assertTrue(allowed)
+
+    def test_permission_does_not_match_non_integer_detail_route(self):
+        request = RequestFactory().get("/api/v1/clients/not-an-id/")
+        request.user = get_user_model()(pk=1)
+
+        self.assertFalse(
+            HasResourceAccess._path_matches(
+                "/api/v1/clients/<int:pk>/", request.path
+            )
+        )
+
     def test_permission_filter_compiles_against_rbac_schema(self):
         user = get_user_model()(pk=1)
         queryset = ResourceRole.objects.filter(
-            resource__path="/api/v1/auth/me/",
             resource__method="GET",
             role__role_users__user=user,
         )
@@ -109,7 +174,262 @@ class HasResourceAccessTests(SimpleTestCase):
 
         self.assertIn("resource", sql)
         self.assertIn("role_users", sql)
-        self.assertEqual(params, ("GET", "/api/v1/auth/me/", 1))
+        self.assertEqual(params, ("GET", 1))
+
+
+class SeedRBACCommandTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="seed-admin",
+            email="seed-admin@example.com",
+            password="test-password",
+        )
+
+    def test_seed_grants_admin_crud_and_client_read_only_access(self):
+        call_command("seed_rbac", username=self.user.username)
+
+        admin_role = Role.objects.get(name="ADMIN")
+        client_role = Role.objects.get(name="CLIENT")
+        self.assertTrue(RoleUser.objects.filter(user=self.user, role=admin_role).exists())
+
+        for method in ("GET", "POST"):
+            self.assertTrue(
+                ResourceRole.objects.filter(
+                    resource__path="/api/v1/clients/",
+                    resource__method=method,
+                    role=admin_role,
+                ).exists()
+            )
+
+        self.assertTrue(
+            ResourceRole.objects.filter(
+                resource__path="/api/v1/clients/<int:pk>/",
+                resource__method="PATCH",
+                role=admin_role,
+            ).exists()
+        )
+        self.assertTrue(
+            ResourceRole.objects.filter(
+                resource__path="/api/v1/spare-parts/available/",
+                resource__method="GET",
+                role=admin_role,
+            ).exists()
+        )
+        self.assertTrue(
+            ResourceRole.objects.filter(
+                resource__path="/api/v1/auth/me/",
+                resource__method="GET",
+                role=client_role,
+            ).exists()
+        )
+        client_read_only_collections = (
+            "clients",
+            "equipment",
+            "service-orders",
+            "diagnoses",
+            "spare-part-consumptions",
+            "quotes",
+            "warranties",
+            "payments",
+        )
+        for collection in client_read_only_collections:
+            for path in (
+                f"/api/v1/{collection}/",
+                f"/api/v1/{collection}/<int:pk>/",
+            ):
+                with self.subTest(path=path):
+                    self.assertTrue(
+                        ResourceRole.objects.filter(
+                            resource__path=path,
+                            resource__method="GET",
+                            role=client_role,
+                        ).exists()
+                    )
+
+        self.assertFalse(
+            ResourceRole.objects.filter(
+                role=client_role,
+                resource__path="/api/v1/clients/",
+                resource__method="POST",
+            ).exists()
+        )
+        self.assertFalse(
+            ResourceRole.objects.filter(
+                role=client_role,
+                resource__method__in=("POST", "PUT", "PATCH", "DELETE"),
+            ).exists()
+        )
+        self.assertFalse(
+            ResourceRole.objects.filter(
+                role=client_role,
+                resource__path="/api/v1/spare-parts/",
+            ).exists()
+        )
+
+    def test_seeded_admin_can_reach_collection_and_arbitrary_detail_routes(self):
+        call_command("seed_rbac", username=self.user.username)
+        token = AccessToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        collection_response = self.client.get("/api/v1/clients/")
+        detail_response = self.client.get("/api/v1/clients/418/")
+
+        self.assertEqual(collection_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_client_role_can_read_profile_and_only_own_client_record(self):
+        call_command("seed_rbac", username=self.user.username)
+        client_user = get_user_model().objects.create_user(
+            username="rbac-client",
+            email="rbac-client@example.com",
+            password="test-password",
+        )
+        client_role = Role.objects.get(name="CLIENT")
+        RoleUser.objects.create(user=client_user, role=client_role)
+        own_client = Client.objects.create(
+            document_type="CC",
+            document_number="CLIENT-OWN-001",
+            name="Cliente propio",
+            phone="3000000000",
+            email="rbac-client@example.com",
+            user=client_user,
+        )
+        Client.objects.create(
+            document_type="CC",
+            document_number="CLIENT-OTHER-001",
+            name="Otro cliente",
+            phone="3000000001",
+            email="other@example.com",
+        )
+        token = AccessToken.for_user(client_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        profile_response = self.client.get("/api/v1/auth/me/")
+        clients_response = self.client.get("/api/v1/clients/")
+        spare_parts_response = self.client.get("/api/v1/spare-parts/")
+
+        self.assertEqual(profile_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(clients_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [client["id"] for client in clients_response.json()],
+            [own_client.pk],
+        )
+        self.assertEqual(spare_parts_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.post("/api/v1/clients/", {}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_seed_is_idempotent(self):
+        call_command("seed_rbac", username=self.user.username)
+        first_resource_count = Resource.objects.count()
+        first_assignment_count = ResourceRole.objects.count()
+
+        call_command("seed_rbac", username=self.user.username)
+
+        self.assertEqual(Resource.objects.count(), first_resource_count)
+        self.assertEqual(ResourceRole.objects.count(), first_assignment_count)
+
+    def test_seed_does_not_assign_admin_without_explicit_username(self):
+        call_command("seed_rbac")
+
+        admin_role = Role.objects.get(name="ADMIN")
+        self.assertFalse(
+            RoleUser.objects.filter(user=self.user, role=admin_role).exists()
+        )
+
+    def test_seed_rejects_unknown_username_before_creating_roles(self):
+        from django.core.management import CommandError
+
+        with self.assertRaises(CommandError):
+            call_command("seed_rbac", username="missing-user")
+
+        self.assertFalse(Role.objects.exists())
+
+
+class AuthenticationFlowTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="auth-flow-user",
+            email="auth-flow@example.com",
+            password="test-password-123",
+        )
+
+    def login(self):
+        response = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": self.user.username, "password": "test-password-123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        return response.data
+
+    def test_login_and_profile_match_frontend_contract(self):
+        call_command("seed_rbac", username=self.user.username)
+        tokens = self.login()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
+
+        profile = self.client.get("/api/v1/auth/me/")
+        profile_payload = profile.json()
+
+        self.assertEqual(profile.status_code, status.HTTP_200_OK)
+        self.assertEqual(profile_payload["username"], self.user.username)
+        self.assertEqual(profile_payload["roles"], ["ADMIN"])
+        self.assertIn("firstName", profile_payload)
+        self.assertIn("lastName", profile_payload)
+        self.assertIn("createdAt", profile_payload)
+
+    def test_refresh_rotates_and_blacklists_previous_refresh_token(self):
+        tokens = self.login()
+
+        refreshed = self.client.post(
+            "/api/v1/auth/token/refresh/",
+            {"refresh": tokens["refresh"]},
+            format="json",
+        )
+        replayed = self.client.post(
+            "/api/v1/auth/token/refresh/",
+            {"refresh": tokens["refresh"]},
+            format="json",
+        )
+
+        self.assertEqual(refreshed.status_code, status.HTTP_200_OK)
+        self.assertIn("access", refreshed.data)
+        self.assertNotEqual(refreshed.data["refresh"], tokens["refresh"])
+        self.assertEqual(replayed.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_logout_blacklists_the_refresh_token(self):
+        tokens = self.login()
+
+        logout = self.client.post(
+            "/api/v1/auth/logout/",
+            {"refresh": tokens["refresh"]},
+            format="json",
+        )
+        refresh = self.client.post(
+            "/api/v1/auth/token/refresh/",
+            {"refresh": tokens["refresh"]},
+            format="json",
+        )
+
+        self.assertEqual(logout.status_code, status.HTTP_205_RESET_CONTENT)
+        self.assertEqual(refresh.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_logout_rejects_missing_or_malformed_refresh_tokens(self):
+        for payload in ({}, {"refresh": None}, {"refresh": []}, {"refresh": "invalid"}):
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    "/api/v1/auth/logout/",
+                    payload,
+                    format="json",
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(
+                    response.json(),
+                    {"detail": "Token inválido o no proporcionado."},
+                )
 
 
 class ResourceAccessResponseTests(APITestCase):

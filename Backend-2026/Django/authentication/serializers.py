@@ -3,6 +3,14 @@ from authentication.models import CustomUser, Role, RoleUser, Resource, Resource
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 
+class LogoutRequestSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+
+class MessageSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -19,7 +27,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ["id", "username", "email", "first_name", "last_name", "roles", "created_at"]
 
-    def get_roles(self, obj):
+    def get_roles(self, obj) -> list[str]:
         return [ru.role.name for ru in obj.user_roles.all()]
 
 

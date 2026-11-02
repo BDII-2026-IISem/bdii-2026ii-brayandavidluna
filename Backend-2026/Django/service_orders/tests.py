@@ -1,9 +1,12 @@
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.contrib import admin
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import AccessToken
 
 from authentication.models import (
     CustomUser,
@@ -13,7 +16,7 @@ from authentication.models import (
     Role,
     RoleUser,
 )
-from clients.admin import ClientAdmin
+from clients.admin import ClientAdmin, ClientAdminForm
 from clients.models import Client
 from equipment.models import Equipment
 from payments.models import Payment
@@ -405,7 +408,6 @@ class SparePartInventoryTests(TestCase):
         consumption.save()
         self.part.refresh_from_db()
         self.assertEqual(self.part.stock, 8)
-
         consumption.status = "ACTIVE"
         consumption.save()
         self.part.refresh_from_db()
@@ -414,6 +416,216 @@ class SparePartInventoryTests(TestCase):
         consumption.delete()
         self.part.refresh_from_db()
         self.assertEqual(self.part.stock, 8)
+
+
+class ClientPortalAccessTests(APITestCase):
+    def setUp(self):
+        call_command("seed_rbac")
+        self.user = CustomUser.objects.create_user(
+            username="portal-client",
+            email="portal@example.com",
+            password="portal-password",
+        )
+        client_role = Role.objects.get(name="CLIENT")
+        RoleUser.objects.create(user=self.user, role=client_role)
+        self.client_record = Client.objects.create(
+            document_type="CC",
+            document_number="PORTAL-CLIENT-1",
+            name="Cliente del portal",
+            phone="3000000010",
+            email="portal@example.com",
+            user=self.user,
+        )
+        other_client = Client.objects.create(
+            document_type="CC",
+            document_number="PORTAL-CLIENT-2",
+            name="Otro cliente del portal",
+            phone="3000000011",
+            email="other-portal@example.com",
+        )
+        technician = Technician.objects.create(name="Técnico del portal")
+        self.own_order = self._create_order(
+            self.client_record, technician, "OS-PORTAL-OWN"
+        )
+        self.other_order = self._create_order(
+            other_client, technician, "OS-PORTAL-OTHER"
+        )
+        self.own_records = {
+            "clients": self.client_record,
+            "equipment": self.own_order.equipment,
+            "service-orders": self.own_order,
+            "diagnoses": Diagnosis.objects.create(
+                service_order=self.own_order,
+                name="Diagnóstico propio",
+                description="Descripción de prueba",
+            ),
+            "spare-part-consumptions": self._create_consumption(self.own_order),
+            "quotes": Quote.objects.create(
+                service_order=self.own_order,
+                name="Cotización propia",
+                total_amount="120.00",
+            ),
+            "warranties": Warranty.objects.create(
+                service_order=self.own_order,
+                name="Garantía propia",
+                start_date="2026-01-01",
+                end_date="2027-01-01",
+            ),
+            "payments": Payment.objects.create(
+                reference_type="ORDEN_SERVICIO",
+                reference_id=self.own_order.pk,
+                service_order=self.own_order,
+                method="EFECTIVO",
+                amount="120.00",
+                payment_date=timezone.now(),
+            ),
+        }
+        self.other_records = {
+            "clients": other_client,
+            "equipment": self.other_order.equipment,
+            "service-orders": self.other_order,
+            "diagnoses": Diagnosis.objects.create(
+                service_order=self.other_order,
+                name="Diagnóstico ajeno",
+                description="Descripción de prueba",
+            ),
+            "spare-part-consumptions": self._create_consumption(self.other_order),
+            "quotes": Quote.objects.create(
+                service_order=self.other_order,
+                name="Cotización ajena",
+                total_amount="130.00",
+            ),
+            "warranties": Warranty.objects.create(
+                service_order=self.other_order,
+                name="Garantía ajena",
+                start_date="2026-01-01",
+                end_date="2027-01-01",
+            ),
+            "payments": Payment.objects.create(
+                reference_type="ORDEN_SERVICIO",
+                reference_id=self.other_order.pk,
+                service_order=self.other_order,
+                method="EFECTIVO",
+                amount="130.00",
+                payment_date=timezone.now(),
+            ),
+        }
+        token = AccessToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+    @staticmethod
+    def _create_order(client, technician, number):
+        equipment = Equipment.objects.create(
+            client=client,
+            name=f"Equipo de {number}",
+        )
+        return ServiceOrder.objects.create(
+            client=client,
+            equipment=equipment,
+            technician=technician,
+            number=number,
+            opened_at=timezone.now(),
+        )
+
+    @staticmethod
+    def _create_consumption(order):
+        part = SparePart.objects.create(
+            name=f"Repuesto de {order.number}",
+            price="10.00",
+            stock=1,
+        )
+        return SparePartConsumption.objects.create(
+            service_order=order,
+            spare_part=part,
+            quantity=1,
+            unit_price="10.00",
+        )
+
+    def test_client_can_read_only_its_related_service_data(self):
+        for collection, own_record in self.own_records.items():
+            with self.subTest(collection=collection):
+                response = self.client.get(f"/api/v1/{collection}/")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    [record["id"] for record in response.json()],
+                    [own_record.pk],
+                )
+
+                other_record = self.other_records[collection]
+                detail_response = self.client.get(
+                    f"/api/v1/{collection}/{other_record.pk}/"
+                )
+                self.assertEqual(detail_response.status_code, 404)
+
+        self.assertEqual(
+            self.client.get("/api/v1/spare-parts/").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/api/v1/service-orders/", {}, format="json").status_code,
+            403,
+        )
+
+    def test_client_admin_requires_the_client_role_for_account_linking(self):
+        unassigned_user = CustomUser.objects.create_user(
+            username="unassigned-portal-user",
+            email="unassigned@example.com",
+            password="portal-password",
+        )
+        form_data = {
+            "document_type": "CC",
+            "document_number": "PORTAL-ADMIN-LINK",
+            "name": "Cliente vinculado",
+            "phone": "3000000012",
+            "email": "linked@example.com",
+            "user": unassigned_user.pk,
+            "address": "",
+            "is_active": "ACTIVE",
+        }
+
+        invalid_form = ClientAdminForm(data=form_data)
+        self.assertFalse(invalid_form.is_valid())
+        self.assertIn("user", invalid_form.errors)
+
+        RoleUser.objects.create(
+            user=unassigned_user,
+            role=Role.objects.get(name="CLIENT"),
+        )
+        valid_form = ClientAdminForm(data=form_data)
+        self.assertTrue(valid_form.is_valid(), valid_form.errors)
+
+
+class SparePartInventoryEdgeCaseTests(TestCase):
+    def setUp(self):
+        client = Client.objects.create(
+            document_type="CC",
+            document_number="STOCK-EDGE-CLIENT",
+            name="Cliente de inventario",
+            phone="3000000002",
+            email="stock-edge@example.com",
+        )
+        equipment = Equipment.objects.create(
+            client=client,
+            name="Equipo de inventario",
+        )
+        technician = Technician.objects.create(name="Técnico de inventario")
+        self.order = ServiceOrder.objects.create(
+            client=client,
+            equipment=equipment,
+            technician=technician,
+            number="OS-STOCK-EDGE",
+            opened_at=timezone.now(),
+        )
+        self.part = SparePart.objects.create(
+            name="Filtro de prueba",
+            price="100.00",
+            stock=8,
+        )
+        self.other_part = SparePart.objects.create(
+            name="Capacitor de prueba",
+            price="50.00",
+            stock=3,
+        )
 
     def test_changing_spare_part_returns_old_stock_and_reserves_new_stock(self):
         consumption = SparePartConsumption.objects.create(

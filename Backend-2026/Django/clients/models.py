@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -30,6 +31,14 @@ class Client(models.Model):
         max_length=30, db_column="telefono", verbose_name="Teléfono"
     )
     email = models.EmailField(max_length=150, verbose_name="Correo electrónico")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="client_profile",
+        blank=True,
+        null=True,
+        verbose_name="Cuenta de acceso",
+    )
     address = models.CharField(
         max_length=255, blank=True, null=True, verbose_name="Dirección"
     )

@@ -27,13 +27,13 @@ La aplicación ofrece una API REST para administrar el proceso de servicio técn
 | `payments` | Pagos relacionados explícitamente con la orden y con el usuario autenticado que los registró. |
 | `authentication` | Usuario personalizado, roles, asignaciones, recursos protegidos, tokens de renovación, JWT y permisos RBAC. |
 
-Las relaciones principales son: un cliente puede tener varios equipos y órdenes; cada equipo se asigna a un cliente y una orden a un técnico. Una orden agrupa diagnósticos, consumos de repuestos, cotizaciones, pagos y, como máximo, una garantía. `SparePartConsumption` conserva la cantidad y el precio unitario aplicado a esa reparación. El pago conserva `reference_type` y `reference_id` del esquema original y además tiene relaciones explícitas opcionales a la orden de servicio y al usuario que lo registró. Así se puede mostrar el cliente desde la orden y el operador desde su usuario, sin adivinar a partir de una referencia genérica. Los registros históricos que no se puedan asociar de manera segura quedan sin esas relaciones y se identifican como antiguos. El dominio conserva las 16 tablas de ClimaTec (seis de autenticación/RBAC y diez de negocio). Como mejoras de implementación, `repuesto.stock` registra las existencias y `cliente.address` conserva la dirección que ya tenía el sistema; ambas son columnas complementarias, no tablas comerciales nuevas. Las existencias existentes se inicializan en cero porque no había un saldo confiable del cual reconstruir inventario; antes de registrar consumos nuevos, se debe ingresar el saldo físico real.
+Las relaciones principales son: un cliente puede tener varios equipos y órdenes; cada equipo se asigna a un cliente y una orden a un técnico. Una orden agrupa diagnósticos, consumos de repuestos, cotizaciones, pagos y, como máximo, una garantía. `SparePartConsumption` conserva la cantidad y el precio unitario aplicado a esa reparación. El pago conserva `reference_type` y `reference_id` del esquema original y además tiene relaciones explícitas opcionales a la orden de servicio y al usuario que lo registró. Así se puede mostrar el cliente desde la orden y el operador desde su usuario, sin adivinar a partir de una referencia genérica. Los registros históricos que no se puedan asociar de manera segura quedan sin esas relaciones y se identifican como antiguos. El dominio conserva las 16 tablas de ClimaTec (seis de autenticación/RBAC y diez de negocio). Como mejoras de implementación, `repuesto.stock` registra las existencias, `cliente.address` conserva la dirección disponible y `cliente.user` permite asociar una cuenta de acceso a un solo cliente; ninguno agrega una tabla comercial ni vincula cuentas automáticamente por correo. Las existencias existentes se inicializan en cero porque no había un saldo confiable del cual reconstruir inventario; antes de registrar consumos nuevos, se debe ingresar el saldo físico real.
 
 ## 2. Configuración y ejecución
 
 El proyecto requiere Python, las dependencias de `requirements.txt` y un motor de base de datos configurado. La selección del motor se hace con `DB_ENGINE` y las variables del motor elegido; las opciones de conexión están descritas en [.env.example](.env.example).
 
-En este checkout, el entorno `.venv` pertenece a WSL: activa y ejecuta el proyecto desde una terminal WSL, no desde PowerShell. No se debe compartir un entorno virtual Linux con Python de Windows ni mover `.venv` junto con la carpeta del proyecto; los scripts de activación guardan la ruta original y dejan de funcionar al cambiar de ubicación. Si se mueve el proyecto, reconstruye el entorno desde su nueva carpeta con `python3 -m venv --clear .venv` y reinstala `requirements.txt`. La guía ISS-00 fija Python 3.12; el entorno local comprobado aquí usa Python 3.14.4, así que debe cambiarse a 3.12 para coincidir exactamente con ese requisito.
+En este checkout, el entorno `.venv` pertenece a WSL: activa y ejecuta el proyecto desde una terminal WSL, no desde PowerShell. No se debe compartir un entorno virtual Linux con Python de Windows ni mover `.venv` junto con la carpeta del proyecto; los scripts de activación guardan la ruta original y dejan de funcionar al cambiar de ubicación. Si se mueve el proyecto, reconstruye el entorno desde su nueva carpeta con `python3 -m venv --clear .venv` y reinstala `requirements.txt`. La guía ISS-00 fija Python 3.12; se conserva intencionalmente Python 3.14.4 en el entorno local. El proyecto pasa sus comprobaciones con esa versión, pero no coincide exactamente con la versión indicada por la guía.
 
 ```bash
 python3 -m venv .venv
@@ -60,7 +60,7 @@ La API usa el prefijo `/api/v1/`. Los nombres de campos de la API se representan
 | --- | --- | --- |
 | Clientes | `/api/v1/clients/` | CRUD de clientes mediante `ModelViewSet`, con nombre y dirección. |
 | Servicio técnico | `/api/v1/equipment/`, `/api/v1/technicians/`, `/api/v1/service-orders/`, `/api/v1/diagnoses/`, `/api/v1/spare-part-consumptions/`, `/api/v1/quotes/`, `/api/v1/warranties/` | CRUD de las entidades del proceso de atención y reparación de equipos. |
-| Repuestos y pagos | `/api/v1/spare-parts/`, `/api/v1/payments/` | Consulta y administración del inventario de repuestos, registro de su consumo en órdenes y pagos vinculados a una orden. |
+| Repuestos y pagos | `/api/v1/spare-parts/`, `/api/v1/spare-parts/available/`, `/api/v1/payments/` | CRUD del inventario, consulta filtrada de repuestos activos con stock y pagos vinculados a una orden. |
 | Autenticación | `/api/v1/auth/login/`, `/api/v1/auth/token/refresh/`, `/api/v1/auth/logout/`, `/api/v1/auth/me/` | Obtener y renovar tokens, cerrar sesión y consultar el perfil autenticado. |
 | Matriz RBAC | `/api/v1/roles/`, `/api/v1/resources/`, `/api/v1/role-users/`, `/api/v1/resource-roles/` | Administrar roles, recursos y sus asignaciones. |
 | Esquema y Swagger | `/api/schema/`, `/api/docs/` | Consultar el esquema OpenAPI y explorar la API. |
@@ -73,7 +73,7 @@ Para acceder a una ruta protegida, el cliente envía el token de acceso en el en
 
 | ISS | Qué se hizo y cómo explicarlo |
 | --- | --- |
-| **00 — Entorno y proyecto (adaptado)** | Se preparó el entorno virtual y se revisaron `manage.py` y WSGI. El entorno WSL comprobado usa Python 3.14.4; la guía fija Python 3.12, por lo que esa versión sigue pendiente para el cumplimiento exacto. |
+| **00 — Entorno y proyecto (adaptado)** | Se preparó el entorno virtual y se revisaron `manage.py` y WSGI. El entorno WSL comprobado usa intencionalmente Python 3.14.4 y las pruebas pasan; la guía fija Python 3.12, así que se registra esta diferencia sin cambiar el runtime local. |
 | **01 — Configuración y base de datos** | Los ajustes viven en `config/settings`; `database_from_environ()` selecciona la conexión por variables de entorno. `DJANGO_SECRET_KEY` es obligatoria y no se reemplaza por una clave insegura por defecto. |
 | **02 — Aplicaciones Django (adaptado)** | Las apps se separan por responsabilidades de ClimaTec (`authentication`, `clients`, `equipment`, `technicians`, `spare_parts`, `service_orders` y `payments`). Esto difiere de las apps `client`, `product` y `sale` pedidas para StoreLab. |
 | **03 — Usuario personalizado** | `CustomUser` extiende `AbstractUser`, añade correo único y marcas de tiempo. Se configura con `AUTH_USER_MODEL`; por eso debe definirse antes de aplicar las migraciones iniciales en una base nueva. |
@@ -88,11 +88,11 @@ Para acceder a una ruta protegida, el cliente envía el token de acceso en el en
 | **07 — DRF, serializers y camelCase** | DRF convierte entre modelos y JSON mediante serializers. El parser y renderer camelCase aceptan y presentan nombres de campos en ese formato en la API. |
 | **08 — API de clientes** | `ClientViewSet` y `DefaultRouter` exponen operaciones CRUD bajo `/api/v1/clients/`, evitando implementar manualmente cada método HTTP. |
 | **09 — Catálogo (adaptado)** | Los viewsets y serializers exponen CRUD para equipos, técnicos, órdenes y repuestos; no existe el catálogo StoreLab de productos. |
-| **10 — Existencias (adaptado)** | `/api/v1/spare-parts/` permite administrar los repuestos y sus existencias; no implementa el endpoint StoreLab de productos disponibles. |
+| **10 — Disponibles (adaptado)** | `AvailableSparePartListAPIView` publica `GET /api/v1/spare-parts/available/`, limitado a repuestos activos con stock mayor que cero. Usa `ListAPIView` sin reemplazar el CRUD del inventario. |
 | **11 — Registro de consumo (adaptado)** | Al crear un consumo activo, se bloquea la fila del repuesto, se valida el saldo y se descuenta dentro de una transacción. Esto no es el registro de venta StoreLab. |
 | **12 — Ajustes de consumo (adaptado)** | Al editar, cambiar el repuesto, desactivar o eliminar un consumo, el inventario se ajusta o se repone. No existen consulta ni anulación de ventas. |
 | **13 — Django Admin** | El admin muestra existencias en la lista de repuestos e incluye los consumos dentro de cada orden. La misma validación de stock se aplica desde el API y el panel. |
-| **14 — OpenAPI y Swagger** | `drf-spectacular` genera el esquema en `/api/schema/` y la interfaz interactiva en `/api/docs/`. |
+| **14 — OpenAPI y Swagger** | `drf-spectacular` genera el esquema en `/api/schema/` y la interfaz interactiva en `/api/docs/`. Las operaciones basadas en `APIView` declaran sus serializers de entrada y respuesta para que aparezcan correctamente en el contrato OpenAPI. |
 | **15 — JWT** | Se integró SimpleJWT y sus rutas para obtener/renovar tokens. La ruta `/api/v1/auth/login/` utiliza el serializer personalizado para agregar claims de usuario. |
 
 ### Autenticación y autorización — ISS-16 a ISS-25
@@ -107,12 +107,20 @@ Para acceder a una ruta protegida, el cliente envía el token de acceso en el en
 | **21 — Permiso dinámico** | `HasResourceAccess` comprueba que el usuario autenticado tenga un rol vinculado al recurso cuya ruta y método coinciden con la petición. La consulta usa relaciones que sí existen en los modelos; no depende de supuestos campos `is_active` en las tablas de relación. |
 | **22 — Protección de vistas** | Las vistas del dominio ClimaTec aplican autenticación y `HasResourceAccess`. Primero se identifica al usuario con JWT; luego RBAC decide si alguno de sus roles tiene permiso para ese recurso. |
 | **23 — CRUD de la matriz** | Los viewsets de roles, recursos, asignaciones de roles a usuarios y asignaciones de recursos a roles permiten administrar la matriz RBAC a través de la API. |
-| **24 — Datos iniciales** | `python manage.py seed_rbac` crea los roles `ADMIN` y `CLIENT`, asigna `ADMIN` al primer usuario si existe y registra el permiso para `GET /api/v1/auth/me/` para ambos roles. Es una semilla mínima: los permisos de otras rutas deben agregarse a la matriz según las necesidades del sistema. |
+| **24 — Datos iniciales** | `python manage.py seed_rbac` crea idempotentemente los roles `ADMIN` y `CLIENT` y registra permisos por método para las colecciones de negocio y la matriz RBAC. No asigna privilegios por orden de creación: para otorgar `ADMIN` a una cuenta concreta se requiere `python manage.py seed_rbac --username nombre_usuario` (sustituye el ejemplo por el username existente). `ADMIN` recibe acceso CRUD; `CLIENT` puede consultar solo por GET su cliente, equipos, órdenes y actividades asociadas. Cada consulta queda acotada al vínculo explícito usuario-cliente; no se conceden escrituras ni acceso al inventario o a otros clientes. Las rutas de detalle usan el patrón `<int:pk>`, válido para cualquier identificador numérico. |
 | **25 — Respuestas 401 y 403** | Las pruebas de API comprueban HTTP 401 sin token y HTTP 403 cuando el token es válido pero el usuario carece del permiso RBAC. La autenticación identifica quién hace la petición; RBAC define qué puede hacer. |
+
+### Provisionar acceso de un cliente
+
+1. En **Usuarios**, crea una cuenta con username, correo y contraseña; en el formulario de usuario asígnale el rol `CLIENT`.
+2. En **Clientes**, edita el registro correcto y selecciona esa cuenta en **Cuenta de acceso**. La validación no permite asociar una cuenta sin rol `CLIENT`.
+3. La cuenta podrá consultar por API su propio registro, equipos, órdenes, diagnósticos, consumos, cotizaciones, garantías y pagos. Listados y detalles se filtran por el vínculo; los clientes no pueden escribir ni consultar stock, técnicos o información de otra persona.
+
+La asociación es explícita y de uno a uno. No se asigna cuenta automáticamente por correo: tener el mismo correo en dos tablas no basta para probar identidad y la tabla de clientes no exige unicidad de correo. Si una cuenta se elimina, el vínculo queda vacío y los datos del cliente se conservan.
 
 ## 5. Cómo funciona el inventario del servicio
 
-1. Se registra o actualiza el saldo físico de un repuesto en `SparePart.stock`, ya sea desde el admin o el endpoint `/api/v1/spare-parts/`. Los registros antiguos se migran con stock cero; ese valor no afirma que el repuesto no exista, sino que no había un saldo fiable guardado.
+1. Se registra o actualiza el saldo físico de un repuesto en `SparePart.stock`, ya sea desde el admin o el endpoint `/api/v1/spare-parts/`. La consulta `GET /api/v1/spare-parts/available/` muestra solo repuestos activos con existencias. Los registros antiguos se migran con stock cero; ese valor no afirma que el repuesto no exista, sino que no había un saldo fiable guardado.
 2. Se agrega un `SparePartConsumption` a la orden desde el inline del admin o `/api/v1/spare-part-consumptions/`, enviando la orden, el repuesto, la cantidad positiva y el precio unitario.
 3. En una transacción, el modelo bloquea con `select_for_update()` el repuesto elegido. Esto evita que dos órdenes concurrentes gasten las mismas unidades.
 4. Si el repuesto está inactivo o no tiene existencias suficientes, la operación devuelve un error de validación y no deja un consumo parcial ni un stock negativo.
@@ -131,13 +139,16 @@ El pago pertenece a otro momento del flujo: registra el dinero recibido, pero no
 
 ## 6. Comprobaciones y evidencias
 
-Las pruebas automatizadas verifican la consulta RBAC contra el esquema existente, las respuestas HTTP 401/403 en una ruta protegida, las relaciones del admin y el descuento/reposición de existencias al crear, modificar, desactivar o eliminar consumos. También comprueban que las rutas comerciales retiradas ya no estén registradas. Para ejecutar las comprobaciones:
+Las pruebas automatizadas verifican los permisos RBAC por método y para rutas de detalle con identificadores variables, que la semilla sea idempotente y no asigne `ADMIN` sin username explícito, que `CLIENT` solo reciba datos vinculados a su cuenta en las rutas de consulta permitidas, además de las respuestas HTTP 401/403, el flujo login/perfil/rotación/logout, las relaciones del admin y el descuento/reposición de existencias al crear, modificar, desactivar o eliminar consumos. También comprueban que las rutas comerciales retiradas ya no estén registradas. Para ejecutar las comprobaciones:
 
 ```bash
 python manage.py check
 python manage.py makemigrations --check --dry-run
 python manage.py test
+python manage.py spectacular --validate
 ```
+
+**Verificación local (2026-11-02):** `check` sin problemas, `makemigrations --check --dry-run` sin cambios pendientes, OpenAPI generado y validado, y **47 pruebas aprobadas**. Las pruebas usan la base temporal de Django. Con autorización, se aplicaron `authentication.0004_alter_resource_path` y `clients.0006_client_user` a la base configurada; `showmigrations` confirmó ambas como aplicadas. No se ejecutó el seeder ni se crearon o modificaron usuarios y clientes.
 ### Evidencias
 
 ### ISS-00 a ISS-04 — Entorno, configuración y cliente

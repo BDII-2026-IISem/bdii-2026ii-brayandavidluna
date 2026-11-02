@@ -17,12 +17,12 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ("reference_type", "reference_id", "registered_by")
 
-    def get_client_name(self, payment):
+    def get_client_name(self, payment) -> str | None:
         if payment.service_order_id:
             return payment.service_order.client.name
         return None
 
-    def get_technician_name(self, payment):
+    def get_technician_name(self, payment) -> str | None:
         if payment.service_order_id:
             return payment.service_order.technician.name
         return None

@@ -126,6 +126,28 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "ClimaTec API",
     "DESCRIPTION": "Documentación interactiva de la API de servicio técnico ClimaTec",
     "VERSION": "1.0.0",
+    "ENUM_NAME_OVERRIDES": {
+        "ActiveStatusEnum": [("ACTIVE", "Activo"), ("INACTIVE", "Inactivo")],
+        "ServiceOrderStatusEnum": [
+            ("ABIERTA", "Abierta"),
+            ("DIAGNOSTICO", "Diagnóstico"),
+            ("COTIZADA", "Cotizada"),
+            ("APROBADA", "Aprobada"),
+            ("REPARACION", "Reparación"),
+            ("CERRADA", "Cerrada"),
+            ("CANCELADA", "Cancelada"),
+        ],
+        "QuoteStatusEnum": [
+            ("PENDIENTE", "Pendiente"),
+            ("APROBADA", "Aprobada"),
+            ("RECHAZADA", "Rechazada"),
+        ],
+        "PaymentStatusEnum": [
+            ("COMPLETADO", "Completado"),
+            ("PENDIENTE", "Pendiente"),
+            ("ANULADO", "Anulado"),
+        ],
+    },
 }
 from datetime import timedelta
 

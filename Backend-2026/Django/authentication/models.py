@@ -36,7 +36,7 @@ class RoleUser(models.Model):
 
 
 class Resource(models.Model):
-    path = models.CharField(max_length=255, unique=True)
+    path = models.CharField(max_length=255)
     method = models.CharField(max_length=10)
     description = models.TextField(blank=True, null=True)
 
